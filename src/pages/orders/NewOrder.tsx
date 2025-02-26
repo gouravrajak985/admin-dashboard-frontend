@@ -65,22 +65,22 @@ const NewOrder = () => {
     });
   };
 
-  const inputClassName = `w-full p-3 border ${
+  const inputClassName = `w-full p-3 border rounded-md ${
     theme === 'dark'
       ? 'bg-gray-900 border-gray-800'
-      : 'bg-white border-gray-200'
-  }`;
+      : 'bg-white border-shopify-border'
+  } focus:outline-none focus:ring-2 ${theme === 'dark' ? 'focus:ring-gray-600' : 'focus:ring-shopify-focus'} focus:border-shopify-focus`;
 
   return (
-    <div className={`border ${
-      theme === 'dark' ? 'bg-black border-gray-800' : 'bg-white border-gray-200'
+    <div className={`border rounded-lg ${
+      theme === 'dark' ? 'bg-black border-gray-800' : 'bg-white border-shopify-border'
     }`}>
-      <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+      <div className="p-6 border-b border-shopify-border dark:border-gray-800">
         <div className="flex items-center">
           <button
             onClick={() => navigate('/orders/manage-orders')}
-            className={`p-2 mr-4 border ${
-              theme === 'dark' ? 'border-gray-800 hover:bg-gray-900' : 'border-gray-200 hover:bg-gray-50'
+            className={`p-2 mr-4 border rounded-md ${
+              theme === 'dark' ? 'border-gray-800 hover:bg-gray-900' : 'border-shopify-border hover:bg-shopify-surface'
             }`}
           >
             <ArrowLeft className="h-5 w-5" />
@@ -156,10 +156,10 @@ const NewOrder = () => {
             <button
               type="button"
               onClick={addItem}
-              className={`p-2 border ${
+              className={`p-2 border rounded-md ${
                 theme === 'dark'
                   ? 'border-gray-800 hover:bg-gray-900'
-                  : 'border-gray-200 hover:bg-gray-50'
+                  : 'border-shopify-border hover:bg-shopify-surface'
               }`}
             >
               <Plus className="h-5 w-5" />
@@ -168,8 +168,8 @@ const NewOrder = () => {
 
           <div className="space-y-4">
             {items.map((item, index) => (
-              <div key={item.id} className={`p-4 border ${
-                theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+              <div key={item.id} className={`p-4 border rounded-md ${
+                theme === 'dark' ? 'border-gray-800' : 'border-shopify-border'
               }`}>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="md:col-span-2">
@@ -221,8 +221,8 @@ const NewOrder = () => {
         </div>
 
         {/* Order Summary */}
-        <div className={`p-4 border ${
-          theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+        <div className={`p-4 border rounded-md ${
+          theme === 'dark' ? 'border-gray-800' : 'border-shopify-border'
         }`}>
           <div className="flex justify-between items-center">
             <span className="font-medium">Total Amount:</span>
@@ -235,10 +235,10 @@ const NewOrder = () => {
           <button
             type="button"
             onClick={(e) => handleSubmit(e, 'draft')}
-            className={`px-6 py-3 border ${
+            className={`px-6 py-3 border rounded-md ${
               theme === 'dark'
                 ? 'border-gray-800 hover:bg-gray-900'
-                : 'border-gray-200 hover:bg-gray-50'
+                : 'border-shopify-border hover:bg-shopify-surface'
             } flex items-center`}
           >
             <Save className="h-5 w-5 mr-2" />
@@ -246,9 +246,7 @@ const NewOrder = () => {
           </button>
           <button
             type="submit"
-            className={`px-6 py-3 ${
-              theme === 'dark' ? 'bg-gray-900' : 'bg-black'
-            } text-white hover:opacity-90 flex items-center`}
+            className="px-6 py-3 bg-shopify-green text-white rounded-md hover:bg-shopify-green-dark flex items-center"
           >
             <Save className="h-5 w-5 mr-2" />
             Create Order

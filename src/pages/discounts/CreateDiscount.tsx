@@ -50,8 +50,8 @@ const CreateDiscount = () => {
   const inputClassName = `w-full p-3 border rounded-md ${
     theme === 'dark'
       ? 'bg-gray-900 border-gray-800'
-      : 'bg-white border-shopify-border focus:border-shopify-focus focus:ring-1 focus:ring-shopify-focus'
-  }`;
+      : 'bg-white border-shopify-border'
+  } focus:outline-none focus:ring-2 ${theme === 'dark' ? 'focus:ring-gray-600' : 'focus:ring-shopify-focus'} focus:border-shopify-focus`;
 
   return (
     <div className={`border rounded-lg ${
@@ -118,7 +118,7 @@ const CreateDiscount = () => {
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, code: generateRandomCode() })}
-                className="px-4 py-2 bg-shopify-green text-white rounded-md hover:bg-shopify-green-dark"
+                className="px 4 py-2 bg-shopify-green text-white rounded-md hover:bg-shopify-green-dark"
               >
                 Generate
               </button>
