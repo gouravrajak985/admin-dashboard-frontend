@@ -95,7 +95,27 @@ const CustomerGrowthReports = () => {
   const [isDateFiltered, setIsDateFiltered] = useState(false);
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
   
-  const customerData = generateSampleData(period);
+  // Generate the base data according to the selected period
+  const baseData = generateSampleData(period);
+  
+  // Apply date filtering only when the Apply button is clicked
+  const customerData = isDateFiltered && startDate && endDate
+    ? baseData.filter(item => {
+        // For monthly and weekly data that have date ranges like "March 2024" or "2024-03-01 to 2024-03-07"
+        if (item.date.includes(' to ')) {
+          const [rangeStart] = item.date.split(' to ');
+          return rangeStart >= startDate;
+        } else if (!item.date.includes('-')) {
+          // For monthly data like "March 2024"
+          const [month, year] = item.date.split(' ');
+          const monthIndex = new Date(`${month} 1, ${year}`).getMonth();
+          const itemDate = new Date(parseInt(year), monthIndex, 1).toISOString().split('T')[0];
+          return itemDate >= startDate && itemDate <= endDate;
+        }
+        // For daily data
+        return item.date >= startDate && item.date <= endDate;
+      })
+    : baseData;
   
   const latestData = customerData[customerData.length - 1];
   const totalNewCustomers = customerData.reduce((sum, item) => sum + item.newCustomers, 0);
@@ -135,15 +155,15 @@ const CustomerGrowthReports = () => {
 
   const getSummaryTimeLabel = () => {
     if (isDateFiltered) {
-      return 'Selected Period';
+      return `${startDate} to ${endDate}`;
     }
     
     switch (period) {
-      case 'daily': return 'Today';
-      case 'weekly': return 'This Week';
-      case 'monthly': return 'This Month';
+      case 'daily': return 'Last 30 Days';
+      case 'weekly': return 'Last 12 Weeks';
+      case 'monthly': return 'Last 12 Months';
       case 'all': return 'All Time';
-      default: return 'This Month';
+      default: return 'Last 12 Months';
     }
   };
   

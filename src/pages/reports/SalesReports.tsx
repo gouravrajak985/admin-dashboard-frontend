@@ -80,11 +80,31 @@ const SalesReports = () => {
   const [isDateFiltered, setIsDateFiltered] = useState(false);
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
   
-  const salesData = generateSampleData(period);
+  // Generate the base data according to the selected period
+  const baseData = generateSampleData(period);
   
-  const totalRevenue = salesData.reduce((sum, item) => sum + item.revenue, 0);
-  const totalOrders = salesData.reduce((sum, item) => sum + item.orders, 0);
-  const averageOrderValue = totalRevenue / totalOrders;
+  // Apply date filtering only when the Apply button is clicked
+  const filteredData = isDateFiltered && startDate && endDate
+    ? baseData.filter(item => {
+        // For monthly and weekly data that have date ranges like "March 2024" or "2024-03-01 to 2024-03-07"
+        if (item.date.includes(' to ')) {
+          const [rangeStart] = item.date.split(' to ');
+          return rangeStart >= startDate;
+        } else if (!item.date.includes('-')) {
+          // For monthly data like "March 2024"
+          const [month, year] = item.date.split(' ');
+          const monthIndex = new Date(`${month} 1, ${year}`).getMonth();
+          const itemDate = new Date(parseInt(year), monthIndex, 1).toISOString().split('T')[0];
+          return itemDate >= startDate && itemDate <= endDate;
+        }
+        // For daily data
+        return item.date >= startDate && item.date <= endDate;
+      })
+    : baseData;
+  
+  const totalRevenue = filteredData.reduce((sum, item) => sum + item.revenue, 0);
+  const totalOrders = filteredData.reduce((sum, item) => sum + item.orders, 0);
+  const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
   const handleDateFilter = () => {
     if (startDate && endDate) {
@@ -120,15 +140,15 @@ const SalesReports = () => {
 
   const getSummaryTimeLabel = () => {
     if (isDateFiltered) {
-      return 'Selected Period';
+      return `${startDate} to ${endDate}`;
     }
     
     switch (period) {
-      case 'daily': return 'Today';
-      case 'weekly': return 'This Week';
-      case 'monthly': return 'This Month';
+      case 'daily': return 'Last 30 Days';
+      case 'weekly': return 'Last 12 Weeks';
+      case 'monthly': return 'Last 12 Months';
       case 'all': return 'All Time';
-      default: return 'This Month';
+      default: return 'Last 12 Months';
     }
   };
   
@@ -376,7 +396,7 @@ const SalesReports = () => {
             <tbody className={`divide-y ${
               theme === 'dark' ? 'divide-gray-800' : 'divide-shopify-border'
             }`}>
-              {salesData.map((item, index) => (
+              {filteredData.map((item, index) => (
                 <tr key={index} className={
                   theme === 'dark' ? 'hover:bg-gray-900' : 'hover:bg-shopify-surface'
                 }>

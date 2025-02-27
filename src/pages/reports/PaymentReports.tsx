@@ -54,9 +54,16 @@ const PaymentReports = () => {
   const [isDateFiltered, setIsDateFiltered] = useState(false);
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
   
-  const paymentData = generateSampleData(period);
+  // Generate the base data according to the selected period
+  const baseData = generateSampleData(period);
   
-  const filteredPayments = paymentData.filter(payment => {
+  // Apply date filtering only when the Apply button is clicked
+  const dateFilteredData = isDateFiltered && startDate && endDate
+    ? baseData.filter(payment => payment.date >= startDate && payment.date <= endDate)
+    : baseData;
+  
+  // Apply method and status filters
+  const filteredPayments = dateFilteredData.filter(payment => {
     const matchesMethod = !methodFilter || payment.method === methodFilter;
     const matchesStatus = !statusFilter || payment.status === statusFilter;
     return matchesMethod && matchesStatus;
@@ -73,7 +80,7 @@ const PaymentReports = () => {
     .filter(payment => payment.status === 'Failed')
     .reduce((sum, payment) => sum + payment.amount, 0);
   
-  const paymentMethods = Array.from(new Set(paymentData.map(payment => payment.method)));
+  const paymentMethods = Array.from(new Set(baseData.map(payment => payment.method)));
   
   const handleDateFilter = () => {
     if (startDate && endDate) {
@@ -124,15 +131,15 @@ const PaymentReports = () => {
 
   const getSummaryTimeLabel = () => {
     if (isDateFiltered) {
-      return 'Selected Period';
+      return `${startDate} to ${endDate}`;
     }
     
     switch (period) {
-      case 'daily': return 'Today';
-      case 'weekly': return 'This Week';
-      case 'monthly': return 'This Month';
+      case 'daily': return 'Last 30 Days';
+      case 'weekly': return 'Last 12 Weeks';
+      case 'monthly': return 'Last 12 Months';
       case 'all': return 'All Time';
-      default: return 'This Month';
+      default: return 'Last 12 Months';
     }
   };
   
