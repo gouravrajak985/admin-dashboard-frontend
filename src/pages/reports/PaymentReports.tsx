@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTheme } from '../../context/ThemeContext';
-import { ArrowLeft, Download, FileText, Calendar, CreditCard, DollarSign, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Download, FileText, Calendar, CreditCard, DollarSign, AlertTriangle, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface PaymentData {
@@ -14,14 +14,20 @@ interface PaymentData {
 }
 
 // Sample data for demonstration
-const generateSampleData = (): PaymentData[] => {
+const generateSampleData = (period: 'daily' | 'weekly' | 'monthly' | 'all'): PaymentData[] => {
   const paymentMethods = ['Credit Card', 'PayPal', 'Bank Transfer', 'Apple Pay', 'Google Pay'];
   const statuses: Array<PaymentData['status']> = ['Completed', 'Pending', 'Failed', 'Refunded'];
   const data: PaymentData[] = [];
+  const now = new Date();
+  
+  let daysToGenerate = 30;
+  if (period === 'weekly') daysToGenerate = 84; // 12 weeks
+  if (period === 'monthly') daysToGenerate = 365; // 12 months
+  if (period === 'all') daysToGenerate = 365;
   
   for (let i = 0; i < 50; i++) {
     const date = new Date();
-    date.setDate(date.getDate() - Math.floor(Math.random() * 30));
+    date.setDate(date.getDate() - Math.floor(Math.random() * daysToGenerate));
     
     data.push({
       id: `PAY-${1000 + i}`,
@@ -40,12 +46,15 @@ const generateSampleData = (): PaymentData[] => {
 const PaymentReports = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'all'>('monthly');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [methodFilter, setMethodFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [isDateFiltered, setIsDateFiltered] = useState(false);
+  const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
   
-  const paymentData = generateSampleData();
+  const paymentData = generateSampleData(period);
   
   const filteredPayments = paymentData.filter(payment => {
     const matchesMethod = !methodFilter || payment.method === methodFilter;
@@ -65,6 +74,18 @@ const PaymentReports = () => {
     .reduce((sum, payment) => sum + payment.amount, 0);
   
   const paymentMethods = Array.from(new Set(paymentData.map(payment => payment.method)));
+  
+  const handleDateFilter = () => {
+    if (startDate && endDate) {
+      setIsDateFiltered(true);
+    }
+  };
+
+  const clearDateFilter = () => {
+    setStartDate('');
+    setEndDate('');
+    setIsDateFiltered(false);
+  };
   
   const handleExportCSV = () => {
     // Implementation for CSV export would go here
@@ -90,6 +111,30 @@ const PaymentReports = () => {
         return '';
     }
   };
+
+  const getPeriodLabel = () => {
+    switch (period) {
+      case 'daily': return 'Daily';
+      case 'weekly': return 'Weekly';
+      case 'monthly': return 'Monthly';
+      case 'all': return 'All Time';
+      default: return 'Monthly';
+    }
+  };
+
+  const getSummaryTimeLabel = () => {
+    if (isDateFiltered) {
+      return 'Selected Period';
+    }
+    
+    switch (period) {
+      case 'daily': return 'Today';
+      case 'weekly': return 'This Week';
+      case 'monthly': return 'This Month';
+      case 'all': return 'All Time';
+      default: return 'This Month';
+    }
+  };
   
   return (
     <div className={`border rounded-lg ${
@@ -109,6 +154,89 @@ const PaymentReports = () => {
         </div>
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0 md:space-x-4">
+          <div className="relative">
+            <button
+              onClick={() => setShowPeriodDropdown(!showPeriodDropdown)}
+              className={`px-4 py-2 rounded-md flex items-center ${
+                theme === 'dark'
+                  ? 'bg-gray-900 border border-gray-800'
+                  : 'bg-white border border-shopify-border'
+              }`}
+            >
+              <span>{getPeriodLabel()}</span>
+              <ChevronDown className="h-4 w-4 ml-2" />
+            </button>
+            
+            {showPeriodDropdown && (
+              <div className={`absolute z-10 mt-1 w-40 rounded-md shadow-lg ${
+                theme === 'dark' ? 'bg-gray-900 border border-gray-800' : 'bg-white border border-shopify-border'
+              }`}>
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      setPeriod('all');
+                      setShowPeriodDropdown(false);
+                    }}
+                    className={`block px-4 py-2 text-sm w-full text-left ${
+                      period === 'all'
+                        ? 'bg-shopify-green text-white'
+                        : theme === 'dark'
+                          ? 'hover:bg-gray-800'
+                          : 'hover:bg-shopify-surface'
+                    }`}
+                  >
+                    All Time
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPeriod('daily');
+                      setShowPeriodDropdown(false);
+                    }}
+                    className={`block px-4 py-2 text-sm w-full text-left ${
+                      period === 'daily'
+                        ? 'bg-shopify-green text-white'
+                        : theme === 'dark'
+                          ? 'hover:bg-gray-800'
+                          : 'hover:bg-shopify-surface'
+                    }`}
+                  >
+                    Daily
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPeriod('weekly');
+                      setShowPeriodDropdown(false);
+                    }}
+                    className={`block px-4 py-2 text-sm w-full text-left ${
+                      period === 'weekly'
+                        ? 'bg-shopify-green text-white'
+                        : theme === 'dark'
+                          ? 'hover:bg-gray-800'
+                          : 'hover:bg-shopify-surface'
+                    }`}
+                  >
+                    Weekly
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPeriod('monthly');
+                      setShowPeriodDropdown(false);
+                    }}
+                    className={`block px-4 py-2 text-sm w-full text-left ${
+                      period === 'monthly'
+                        ? 'bg-shopify-green text-white'
+                        : theme === 'dark'
+                          ? 'hover:bg-gray-800'
+                          : 'hover:bg-shopify-surface'
+                    }`}
+                  >
+                    Monthly
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          
           <div className="flex items-center space-x-2">
             <Calendar className="h-5 w-5 text-shopify-text-secondary" />
             <input
@@ -132,6 +260,28 @@ const PaymentReports = () => {
                   : 'bg-white border-shopify-border'
               }`}
             />
+            <button
+              onClick={handleDateFilter}
+              className={`px-3 py-2 rounded-md ${
+                theme === 'dark'
+                  ? 'bg-gray-900 border border-gray-800 hover:bg-gray-800'
+                  : 'bg-white border border-shopify-border hover:bg-shopify-surface'
+              }`}
+            >
+              Apply
+            </button>
+            {isDateFiltered && (
+              <button
+                onClick={clearDateFilter}
+                className={`px-3 py-2 rounded-md ${
+                  theme === 'dark'
+                    ? 'bg-gray-900 border border-gray-800 hover:bg-gray-800'
+                    : 'bg-white border border-shopify-border hover:bg-shopify-surface'
+                }`}
+              >
+                Clear
+              </button>
+            )}
           </div>
           
           <div className="flex space-x-2">
@@ -204,7 +354,9 @@ const PaymentReports = () => {
             <DollarSign className="h-6 w-6 text-shopify-green" />
           </div>
           <p className="text-3xl font-bold">${totalAmount.toLocaleString()}</p>
-          <p className="text-sm text-shopify-text-secondary mt-2">{filteredPayments.length} transactions</p>
+          <p className="text-sm text-shopify-text-secondary mt-2">
+            {getSummaryTimeLabel()} • {filteredPayments.length} transactions
+          </p>
         </div>
         
         <div className={`p-6 rounded-lg border ${
@@ -216,7 +368,7 @@ const PaymentReports = () => {
           </div>
           <p className="text-3xl font-bold">${completedAmount.toLocaleString()}</p>
           <p className="text-sm text-shopify-text-secondary mt-2">
-            {filteredPayments.filter(p => p.status === 'Completed').length} transactions
+            {getSummaryTimeLabel()} • {filteredPayments.filter(p => p.status === 'Completed').length} transactions
           </p>
         </div>
         
@@ -229,7 +381,7 @@ const PaymentReports = () => {
           </div>
           <p className="text-3xl font-bold">${pendingAmount.toLocaleString()}</p>
           <p className="text-sm text-shopify-text-secondary mt-2">
-            {filteredPayments.filter(p => p.status === 'Pending').length} transactions
+            {getSummaryTimeLabel()} • {filteredPayments.filter(p => p.status === 'Pending').length} transactions
           </p>
         </div>
         
@@ -242,7 +394,7 @@ const PaymentReports = () => {
           </div>
           <p className="text-3xl font-bold">${failedAmount.toLocaleString()}</p>
           <p className="text-sm text-shopify-text-secondary mt-2">
-            {filteredPayments.filter(p => p.status === 'Failed').length} transactions
+            {getSummaryTimeLabel()} • {filteredPayments.filter(p => p.status === 'Failed').length} transactions
           </p>
         </div>
       </div>

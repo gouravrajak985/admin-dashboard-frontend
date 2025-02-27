@@ -86,6 +86,13 @@ const Sidebar = () => {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   
+  // Automatically open the Reports menu if we're on a reports page
+  React.useEffect(() => {
+    if (location.pathname.startsWith('/reports')) {
+      setOpenMenuId('reports');
+    }
+  }, [location.pathname]);
+
   const handleMenuToggle = (id: string) => {
     setOpenMenuId(openMenuId === id ? null : id);
   };
