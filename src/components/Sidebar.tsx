@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, Home, ShoppingBag, Package, Users, LogOut, Tag } from 'lucide-react';
+import { ChevronDown, Home, ShoppingBag, Package, Users, LogOut, Tag, BarChart } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import LogoutDialog from './LogoutDialog';
@@ -159,6 +159,21 @@ const Sidebar = () => {
               id="discounts"
               onToggle={handleMenuToggle}
               isOpen={openMenuId === 'discounts'}
+            />
+            <MenuItem 
+              icon={BarChart} 
+              label="Reports & Analytics" 
+              subItems={['Sales Reports', 'Customer Growth', 'Best-Selling Products', 'Payment Reports']}
+              subItemPaths={[
+                '/reports/sales', 
+                '/reports/customer-growth', 
+                '/reports/best-selling', 
+                '/reports/payments'
+              ]}
+              isActive={location.pathname.startsWith('/reports')}
+              id="reports"
+              onToggle={handleMenuToggle}
+              isOpen={openMenuId === 'reports'}
             />
           </nav>
 

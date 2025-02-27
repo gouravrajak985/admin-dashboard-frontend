@@ -12,6 +12,9 @@ import ManageCustomers from './pages/customers/ManageCustomers';
 import Profile from './pages/Profile';
 import ManageDiscounts from './pages/discounts/ManageDiscounts';
 import CreateDiscount from './pages/discounts/CreateDiscount';
+import SalesReports from './pages/reports/SalesReports';
+import CustomerGrowthReports from './pages/reports/CustomerGrowthReports';
+import PaymentReports from './pages/reports/PaymentReports';
 
 function App() {
   const [showMobileWarning, setShowMobileWarning] = useState(false);
@@ -57,6 +60,9 @@ function App() {
             <Route path="/customers/manage-customers" element={<ManageCustomers />} />
             <Route path="/discounts/manage" element={<ManageDiscounts />} />
             <Route path="/discounts/create" element={<CreateDiscount />} />
+            <Route path="/reports/sales" element={<SalesReports />} />
+            <Route path="/reports/customer-growth" element={<CustomerGrowthReports />} />
+            <Route path="/reports/payments" element={<PaymentReports />} />
             <Route path="/profile" element={<Profile />} />
           </Routes>
         </DashboardLayout>
