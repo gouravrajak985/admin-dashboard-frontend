@@ -1,11 +1,9 @@
 import React from 'react';
 import { DollarSign, ShoppingCart, Package, TrendingUp, Bell } from 'lucide-react';
-import StatCard from '../components/StatCard';
-import { useTheme } from '../context/ThemeContext';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SummaryCard } from '@/components/ui/summary-card';
 
 const Home = () => {
-  const { theme } = useTheme();
-  
   const stats = [
     {
       title: 'Total Sales',
@@ -65,39 +63,54 @@ const Home = () => {
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
-          <StatCard key={index} {...stat} />
+          <SummaryCard 
+            key={index} 
+            title={stat.title} 
+            value={stat.value} 
+            icon={stat.icon}
+            subtitle={
+              <span>
+                <span className={cn(
+                  "font-medium",
+                  stat.isPositive ? "text-green-600" : "text-red-600"
+                )}>
+                  {stat.change}
+                </span>
+                <span className="ml-2 text-muted-foreground">from last month</span>
+              </span>
+            }
+          />
         ))}
       </div>
 
-      <div className={`border rounded-lg ${
-        theme === 'dark' ? 'bg-black border-gray-800' : 'bg-white border-shopify-border'
-      } p-6`}>
-        <div className="flex items-center mb-6">
-          <Bell className="h-5 w-5 mr-2 text-shopify-text-secondary" />
-          <h2 className="text-lg font-semibold">Recent Notifications</h2>
-        </div>
-        
-        <div className="space-y-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center">
+          <Bell className="h-5 w-5 mr-2 text-muted-foreground" />
+          <CardTitle>Recent Notifications</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
           {notifications.map((notification) => (
-            <div
-              key={notification.id}
-              className={`p-4 rounded-lg border ${
-                theme === 'dark' ? 'border-gray-800 bg-gray-900' : 'border-shopify-border bg-shopify-surface'
-              }`}
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-medium">{notification.title}</h3>
-                  <p className="mt-1 text-sm text-shopify-text-secondary">{notification.description}</p>
+            <Card key={notification.id} className="bg-secondary">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium">{notification.title}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{notification.description}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{notification.time}</span>
                 </div>
-                <span className="text-xs text-shopify-text-secondary">{notification.time}</span>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
+};
+
+// Helper function for class names
+const cn = (...classes: (string | boolean | undefined)[]) => {
+  return classes.filter(Boolean).join(' ');
 };
 
 export default Home;

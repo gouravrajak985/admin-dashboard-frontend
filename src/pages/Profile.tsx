@@ -1,63 +1,86 @@
-import React, { useState } from 'react';
-import { useTheme } from '../context/ThemeContext';
-import { Save, ArrowLeft, Camera } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { getUserProfile, updateUserProfile, clearError, resetSuccess } from '../redux/slices/authSlice';
+import { AppDispatch, RootState } from '../redux/store';
+import { Save, Camera } from 'lucide-react';
+import Message from '../components/Message';
+import Loader from '../components/Loader';
 
 const Profile = () => {
-  const { theme } = useTheme();
-  const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
+  const { user, loading, error, success } = useSelector((state: RootState) => state.auth);
+  
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    name: 'John Doe',
-    email: 'john@example.com',
-    phone: '+1 234 567 890',
-    role: 'Administrator',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    bio: 'Experienced administrator with expertise in e-commerce management and customer relations.',
-    location: 'New York, USA',
-    joinDate: '2023-01-15',
-    lastLogin: '2024-03-20 14:30'
-  });
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState('https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80');
+
+  useEffect(() => {
+    dispatch(getUserProfile());
+    
+    return () => {
+      dispatch(clearError());
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name);
+      setEmail(user.email);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (success) {
+      setIsEditing(false);
+      setPassword('');
+      setConfirmPassword('');
+      dispatch(resetSuccess());
+    }
+  }, [success, dispatch]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsEditing(false);
-    // Add profile update logic here
-    console.log('Updated profile:', formData);
+    setMessage(null);
+    
+    // Validate passwords match if changing password
+    if (password && password !== confirmPassword) {
+      setMessage('Passwords do not match');
+      return;
+    }
+    
+    const userData = {
+      name,
+      email,
+      password: password || undefined
+    };
+
+    dispatch(updateUserProfile(userData));
   };
 
-  const inputClassName = `w-full p-3 border ${
-    theme === 'dark'
-      ? 'bg-gray-900 border-gray-800'
-      : 'bg-white border-gray-200'
-  }`;
+  const inputClassName = "w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500";
 
   return (
-    <div className={`border ${
-      theme === 'dark' ? 'bg-black border-gray-800' : 'bg-white border-gray-200'
-    }`}>
-      <div className="p-6 border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className={`p-2 mr-4 border ${
-              theme === 'dark' ? 'border-gray-800 hover:bg-gray-900' : 'border-gray-200 hover:bg-gray-50'
-            }`}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h2 className="text-xl font-semibold">Admin Profile</h2>
-        </div>
+    <div className="border rounded-lg">
+      <div className="p-6 border-b">
+        <h2 className="text-xl font-semibold">My Profile</h2>
       </div>
 
       <div className="p-6">
         <div className="max-w-4xl mx-auto">
+          {error && <Message variant="error">{error}</Message>}
+          {message && <Message variant="error">{message}</Message>}
+          {loading && <Loader />}
+          
           {/* Profile Header */}
           <div className="mb-8 text-center">
             <div className="relative inline-block">
               <img
-                src={formData.avatar}
-                alt={formData.name}
+                src={avatar}
+                alt={name}
                 className="w-32 h-32 rounded-full border-4 border-white dark:border-gray-800 shadow-lg"
               />
               {isEditing && (
@@ -67,15 +90,13 @@ const Profile = () => {
                 </label>
               )}
             </div>
-            <h1 className="mt-4 text-2xl font-bold">{formData.name}</h1>
-            <p className="text-gray-500">{formData.role}</p>
+            <h1 className="mt-4 text-2xl font-bold">{name}</h1>
+            <p className="text-gray-500">{user?.role || 'Seller'}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Information */}
-            <div className={`p-6 border ${
-              theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-            }`}>
+            <div className="p-6 border rounded-lg">
               <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -83,12 +104,13 @@ const Profile = () => {
                   {isEditing ? (
                     <input
                       type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                       className={inputClassName}
+                      required
                     />
                   ) : (
-                    <p className="p-3">{formData.name}</p>
+                    <p className="p-3 border rounded-md bg-gray-50 dark:bg-gray-800">{name}</p>
                   )}
                 </div>
                 <div>
@@ -96,70 +118,62 @@ const Profile = () => {
                   {isEditing ? (
                     <input
                       type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       className={inputClassName}
+                      required
                     />
                   ) : (
-                    <p className="p-3">{formData.email}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Phone</label>
-                  {isEditing ? (
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className={inputClassName}
-                    />
-                  ) : (
-                    <p className="p-3">{formData.phone}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Location</label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={formData.location}
-                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                      className={inputClassName}
-                    />
-                  ) : (
-                    <p className="p-3">{formData.location}</p>
+                    <p className="p-3 border rounded-md bg-gray-50 dark:bg-gray-800">{email}</p>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Additional Information */}
-            <div className={`p-6 border ${
-              theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-            }`}>
-              <h3 className="text-lg font-semibold mb-4">Additional Information</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Bio</label>
-                  {isEditing ? (
-                    <textarea
-                      value={formData.bio}
-                      onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                      className={`${inputClassName} h-32`}
-                    />
-                  ) : (
-                    <p className="p-3">{formData.bio}</p>
-                  )}
-                </div>
+            {/* Password Change (only when editing) */}
+            {isEditing && (
+              <div className="p-6 border rounded-lg">
+                <h3 className="text-lg font-semibold mb-4">Change Password</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Join Date</label>
-                    <p className="p-3">{formData.joinDate}</p>
+                    <label className="block text-sm font-medium mb-2">New Password</label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className={inputClassName}
+                      placeholder="Leave blank to keep current password"
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Last Login</label>
-                    <p className="p-3">{formData.lastLogin}</p>
+                    <label className="block text-sm font-medium mb-2">Confirm New Password</label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className={inputClassName}
+                      placeholder="Leave blank to keep current password"
+                    />
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Account Information */}
+            <div className="p-6 border rounded-lg">
+              <h3 className="text-lg font-semibold mb-4">Account Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Role</label>
+                  <p className="p-3 border rounded-md bg-gray-50 dark:bg-gray-800">
+                    {user?.role || 'Seller'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Account Status</label>
+                  <p className="p-3 border rounded-md bg-gray-50 dark:bg-gray-800">
+                    {user?.isVerified ? 'Verified' : 'Not Verified'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -171,19 +185,14 @@ const Profile = () => {
                   <button
                     type="button"
                     onClick={() => setIsEditing(false)}
-                    className={`px-6 py-3 border ${
-                      theme === 'dark'
-                        ? 'border-gray-800 hover:bg-gray-900'
-                        : 'border-gray-200 hover:bg-gray-50'
-                    }`}
+                    className="px-6 py-3 border rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className={`px-6 py-3 ${
-                      theme === 'dark' ? 'bg-gray-900' : 'bg-black'
-                    } text-white hover:opacity-90 flex items-center`}
+                    className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
+                    disabled={loading}
                   >
                     <Save className="h-5 w-5 mr-2" />
                     Save Changes
@@ -193,9 +202,7 @@ const Profile = () => {
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}
-                  className={`px-6 py-3 ${
-                    theme === 'dark' ? 'bg-gray-900' : 'bg-black'
-                  } text-white hover:opacity-90`}
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
                 >
                   Edit Profile
                 </button>

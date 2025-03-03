@@ -1,8 +1,26 @@
-import React, { useState } from 'react';
-import { ChevronDown, Home, ShoppingBag, Package, Users, LogOut, Tag, BarChart } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronDown, Home, ShoppingBag, Package, Users, LogOut, Tag, BarChart, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useSidebar } from '../context/SidebarContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { logout } from '../redux/slices/authSlice';
+import { AppDispatch } from '../redux/store';
 import LogoutDialog from './LogoutDialog';
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+interface MenuItemProps { 
+  icon: React.ElementType;
+  label: string;
+  subItems?: string[];
+  isActive?: boolean;
+  path?: string;
+  subItemPaths?: string[];
+  isOpen?: boolean;
+  onToggle?: (id: string) => void;
+  id: string;
+}
 
 const MenuItem = ({ 
   icon: Icon, 
@@ -14,20 +32,10 @@ const MenuItem = ({
   isOpen,
   onToggle,
   id
-}: { 
-  icon: React.ElementType;
-  label: string;
-  subItems?: string[];
-  isActive?: boolean;
-  path?: string;
-  subItemPaths?: string[];
-  isOpen?: boolean;
-  onToggle?: (id: string) => void;
-  id: string;
-}) => {
-  const { theme } = useTheme();
+}: MenuItemProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isExpanded } = useSidebar();
 
   const handleClick = () => {
     if (subItems.length > 0) {
@@ -41,38 +49,35 @@ const MenuItem = ({
 
   return (
     <div>
-      <button
+      <Button
         onClick={handleClick}
-        className={`w-full flex items-center px-4 py-3 text-sm border-l-2 ${
-          isActive 
-            ? `${theme === 'dark' ? 'border-white bg-gray-900' : 'border-shopify-green bg-shopify-surface'} ` 
-            : `border-transparent ${theme === 'dark' ? 'hover:bg-gray-900' : 'hover:bg-shopify-surface'}`
-        }`}
+        variant={isActive ? "secondary" : "ghost"}
+        className={cn(
+          "w-full justify-start text-left",
+          isActive && "border-l-2 border-primary rounded-none",
+          !isExpanded && "px-2"
+        )}
       >
-        <Icon className="h-5 w-5 mr-3" />
-        <span className="flex-1 text-left">{label}</span>
-        {subItems.length > 0 && (
+        <Icon className={cn("h-5 w-5", isExpanded ? "mr-3" : "mr-0")} />
+        {isExpanded && <span className="flex-1 text-left transition-opacity duration-200">{label}</span>}
+        {isExpanded && subItems.length > 0 && (
           <ChevronDown className={`h-4 w-4 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         )}
-      </button>
-      {isOpen && subItems.length > 0 && (
-        <div className="ml-8 border-l border-shopify-border dark:border-gray-700">
+      </Button>
+      {isExpanded && isOpen && subItems.length > 0 && (
+        <div className="ml-8 border-l border-border">
           {subItems.map((item, index) => (
-            <button
+            <Button
               key={item}
               onClick={() => navigate(subItemPaths[index])}
-              className={`w-full text-left px-4 py-2 text-sm ${
-                isSubItemActive(subItemPaths[index])
-                  ? theme === 'dark'
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-shopify-surface text-shopify-text'
-                  : theme === 'dark'
-                    ? 'hover:bg-gray-900'
-                    : 'hover:bg-shopify-surface'
-              }`}
+              variant="ghost"
+              className={cn(
+                "w-full justify-start text-left pl-4 py-2 text-sm",
+                isSubItemActive(subItemPaths[index]) && "bg-secondary"
+              )}
             >
               {item}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -81,15 +86,25 @@ const MenuItem = ({
 };
 
 const Sidebar = () => {
-  const { theme } = useTheme();
   const location = useLocation();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const { isExpanded, toggleSidebar, openSidebar, closeSidebar, sidebarRef } = useSidebar();
+  const { theme } = useTheme();
+  const dispatch = useDispatch<AppDispatch>();
   
   // Automatically open the Reports menu if we're on a reports page
-  React.useEffect(() => {
+  useEffect(() => {
     if (location.pathname.startsWith('/reports')) {
       setOpenMenuId('reports');
+    } else if (location.pathname.startsWith('/catalog')) {
+      setOpenMenuId('catalog');
+    } else if (location.pathname.startsWith('/orders')) {
+      setOpenMenuId('orders');
+    } else if (location.pathname.startsWith('/customers')) {
+      setOpenMenuId('customers');
+    } else if (location.pathname.startsWith('/discounts')) {
+      setOpenMenuId('discounts');
     }
   }, [location.pathname]);
 
@@ -98,26 +113,35 @@ const Sidebar = () => {
   };
 
   const handleLogout = () => {
-    // Implement logout logic here
-    console.log('Logging out...');
+    dispatch(logout());
     setIsLogoutDialogOpen(false);
   };
 
   return (
     <>
-      <aside className={`fixed left-0 top-0 w-64 h-screen border-r ${
-        theme === 'dark' 
-          ? 'bg-black border-gray-800' 
-          : 'bg-white border-shopify-border'
-      }`}>
+      <aside 
+        ref={sidebarRef}
+        className={cn(
+          "fixed left-0 top-0 h-screen border-r border-border bg-background transition-all duration-300 ease-in-out z-20 group",
+          isExpanded ? "w-64" : "w-16"
+        )}
+        onMouseEnter={openSidebar}
+        onMouseLeave={closeSidebar}
+      >
         {/* Header */}
-        <div className="h-16 flex items-center px-6 border-b border-shopify-border dark:border-gray-800">
-          <h1 className="text-xl font-bold">Avirrav Ecommerce</h1>
+        <div className="h-16 flex items-center px-4 border-b border-border justify-between">
+          {isExpanded ? (
+            <h1 className="text-xl font-bold truncate">Avirrav Ecommerce</h1>
+          ) : (
+            <span className="mx-auto">
+              <Package className="h-6 w-6 text-primary" />
+            </span>
+          )}
         </div>
 
         {/* Navigation */}
         <div className="flex flex-col h-[calc(100vh-4rem)]">
-          <nav className="flex-1 py-4">
+          <nav className="flex-1 py-4 space-y-1 overflow-y-auto px-2">
             <MenuItem 
               icon={Home} 
               label="Home" 
@@ -170,11 +194,10 @@ const Sidebar = () => {
             <MenuItem 
               icon={BarChart} 
               label="Reports & Analytics" 
-              subItems={['Sales Reports', 'Customer Growth', 'Best-Selling Products', 'Payment Reports']}
+              subItems={['Sales Reports', 'Customer Growth', 'Payment Reports']}
               subItemPaths={[
                 '/reports/sales', 
                 '/reports/customer-growth', 
-                '/reports/best-selling', 
                 '/reports/payments'
               ]}
               isActive={location.pathname.startsWith('/reports')}
@@ -185,18 +208,15 @@ const Sidebar = () => {
           </nav>
 
           {/* Logout Button */}
-          <div className="p-4 border-t border-shopify-border dark:border-gray-800">
-            <button
+          <div className={cn("p-4 border-t border-border", !isExpanded && "px-2")}>
+            <Button
               onClick={() => setIsLogoutDialogOpen(true)}
-              className={`w-full flex items-center px-4 py-3 text-sm border rounded-md ${
-                theme === 'dark'
-                  ? 'border-gray-800 hover:bg-gray-900'
-                  : 'border-shopify-border hover:bg-shopify-surface'
-              }`}
+              variant="outline"
+              className={cn("w-full flex items-center", !isExpanded && "justify-center px-0")}
             >
-              <LogOut className="h-5 w-5 mr-3" />
-              <span>Logout</span>
-            </button>
+              <LogOut className={cn("h-5 w-5", isExpanded && "mr-3")} />
+              {isExpanded && <span>Logout</span>}
+            </Button>
           </div>
         </div>
       </aside>

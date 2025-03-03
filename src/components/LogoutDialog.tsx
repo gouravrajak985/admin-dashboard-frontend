@@ -1,5 +1,14 @@
 import React from 'react';
 import { useTheme } from '../context/ThemeContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface LogoutDialogProps {
   isOpen: boolean;
@@ -8,48 +17,27 @@ interface LogoutDialogProps {
 }
 
 const LogoutDialog = ({ isOpen, onClose, onConfirm }: LogoutDialogProps) => {
-  const { theme } = useTheme();
-
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      
-      {/* Dialog */}
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-        <div className={`${
-          theme === 'dark' ? 'bg-gray-900' : 'bg-white'
-        } p-6 rounded-lg shadow-xl w-[400px]`}>
-          <h3 className="text-xl font-semibold mb-4">Confirm Logout</h3>
-          <p className="text-gray-500 mb-6">Are you sure you want to log out?</p>
-          
-          <div className="flex justify-end space-x-4">
-            <button
-              onClick={onClose}
-              className={`px-4 py-2 border ${
-                theme === 'dark'
-                  ? 'border-gray-800 hover:bg-gray-800'
-                  : 'border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={onConfirm}
-              className={`px-4 py-2 ${
-                theme === 'dark'
-                  ? 'bg-gray-900 border border-gray-800 hover:bg-gray-800'
-                  : 'bg-black hover:bg-gray-800'
-              } text-white rounded`}
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Confirm Logout</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to log out?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={onConfirm}>
+            Logout
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

@@ -1,5 +1,6 @@
 import React from 'react';
-import { useTheme } from '../context/ThemeContext';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface StatCardProps {
   title: string;
@@ -10,34 +11,27 @@ interface StatCardProps {
 }
 
 const StatCard = ({ title, value, change, isPositive, icon: Icon }: StatCardProps) => {
-  const { theme } = useTheme();
-  
   return (
-    <div className={`p-6 rounded-lg border ${
-      theme === 'dark' 
-        ? 'bg-gray-900 border-gray-800' 
-        : 'bg-white border-shopify-border'
-    }`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-shopify-text-secondary">{title}</p>
-          <p className="mt-2 text-3xl font-semibold">{value}</p>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        <div className="p-2 bg-secondary rounded-md">
+          <Icon className="h-5 w-5 text-primary" />
         </div>
-        <div className={`p-3 rounded-lg ${
-          theme === 'dark' 
-            ? 'bg-gray-800' 
-            : 'bg-shopify-surface'
-        }`}>
-          <Icon className="h-6 w-6 text-shopify-green" />
-        </div>
-      </div>
-      <div className="mt-4">
-        <span className={`text-sm font-medium ${isPositive ? 'text-shopify-green' : 'text-red-500'}`}>
-          {change}
-        </span>
-        <span className="ml-2 text-sm text-shopify-text-secondary">from last month</span>
-      </div>
-    </div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-3xl font-bold">{value}</div>
+        <p className="mt-2 text-sm">
+          <span className={cn(
+            "font-medium",
+            isPositive ? "text-green-600" : "text-red-600"
+          )}>
+            {change}
+          </span>
+          <span className="ml-2 text-muted-foreground">from last month</span>
+        </p>
+      </CardContent>
+    </Card>
   );
 };
 

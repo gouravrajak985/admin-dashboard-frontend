@@ -1,41 +1,80 @@
 import React, { useState, useEffect } from 'react';
-import { useTheme } from '../../context/ThemeContext';
-import { Upload, X, Plus, Save, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { createProduct, clearProductError, resetProductSuccess } from '../../redux/slices/productSlice';
+import { AppDispatch, RootState } from '../../redux/store';
+import { Plus, Minus, Save } from 'lucide-react';
+import { CardContainer } from '@/components/ui/card-container';
+import { PageHeader } from '@/components/ui/page-header';
+import { FormInput } from '@/components/ui/form-input';
+import { FormTextarea } from '@/components/ui/form-textarea';
+import { FormSelect } from '@/components/ui/form-select';
+import { ActionButton } from '@/components/ui/action-button';
+import { ImageUpload } from '@/components/ui/image-upload';
+import Message from '../../components/Message';
+import Loader from '../../components/Loader';
 
 interface Tax {
-  id: string;
   name: string;
   percentage: number;
 }
 
 const NewProduct = () => {
-  const { theme } = useTheme();
-  const navigate = useNavigate();
-  const [title, setTitle] = useState('');
+  const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
+  const [basePrice, setBasePrice] = useState('');
+  const [profitPercentage, setProfitPercentage] = useState('20');
   const [taxes, setTaxes] = useState<Tax[]>([]);
   const [newTaxName, setNewTaxName] = useState('');
   const [newTaxPercentage, setNewTaxPercentage] = useState('');
   const [stock, setStock] = useState('');
+  const [sku, setSku] = useState('');
+  const [status, setStatus] = useState('Saved');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [priceWithProfit, setPriceWithProfit] = useState(0);
   const [finalPrice, setFinalPrice] = useState(0);
+  const [brand, setBrand] = useState('');
+  const [category, setCategory] = useState('');
+  const [dimensions, setDimensions] = useState('');
+  const [weight, setWeight] = useState('');
+  const [image, setImage] = useState('');
+
+  const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
+  
+  const { loading, error, success } = useSelector((state: RootState) => state.products);
 
   useEffect(() => {
-    const basePrice = parseFloat(price) || 0;
+    // Clear any previous errors and success state
+    dispatch(clearProductError());
+    dispatch(resetProductSuccess());
+  }, [dispatch]);
+
+  useEffect(() => {
+    // Redirect after successful product creation
+    if (success) {
+      navigate('/catalog/manage-products');
+    }
+  }, [success, navigate]);
+
+  useEffect(() => {
+    const basePriceValue = parseFloat(basePrice) || 0;
+    const profitValue = basePriceValue * (parseFloat(profitPercentage) / 100);
+    const priceWithProfitValue = basePriceValue + profitValue;
+    setPriceWithProfit(priceWithProfitValue);
+    
     const taxAmount = taxes.reduce((acc, tax) => {
-      return acc + (basePrice * (tax.percentage / 100));
+      return acc + (priceWithProfitValue * (tax.percentage / 100));
     }, 0);
-    setFinalPrice(basePrice + taxAmount);
-  }, [price, taxes]);
+    
+    setFinalPrice(priceWithProfitValue + taxAmount);
+  }, [basePrice, profitPercentage, taxes]);
 
   const handleAddTax = () => {
     if (newTaxName && newTaxPercentage) {
       setTaxes([
         ...taxes,
         {
-          id: Date.now().toString(),
           name: newTaxName,
           percentage: parseFloat(newTaxPercentage)
         }
@@ -45,165 +84,181 @@ const NewProduct = () => {
     }
   };
 
-  const handleRemoveTax = (id: string) => {
-    setTaxes(taxes.filter(tax => tax.id !== id));
+  const handleRemoveTax = (index: number) => {
+    setTaxes(taxes.filter((_, i) => i !== index));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  const handleImageUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setImagePreview(result);
+      setImage(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageRemove = () => {
+    setImagePreview(null);
+    setImage('');
+  };
+
+  const handleSubmit = (submitStatus: 'Live' | 'Saved') => {
+    // Validate form
+    if (!name || !image || !brand || !category || !description || !basePrice || !stock || !sku) {
+      alert('Please fill in all required fields');
+      return;
     }
-  };
 
-  const handleSave = (status: 'draft' | 'published') => {
-    // Handle save logic here
-    console.log({
-      title,
+    const productData = {
+      name,
+      image,
+      brand,
+      category,
       description,
-      price: parseFloat(price),
+      basePrice: parseFloat(basePrice),
+      profitPercentage: parseFloat(profitPercentage),
       taxes,
-      finalPrice,
       stock: parseInt(stock),
-      status
-    });
-  };
+      sku,
+      status: submitStatus,
+      dimensions,
+      weight
+    };
 
-  const inputClassName = `w-full p-3 border rounded-md ${
-    theme === 'dark'
-      ? 'bg-gray-900 border-gray-800'
-      : 'bg-white border-shopify-border'
-  } focus:outline-none focus:ring-2 ${theme === 'dark' ? 'focus:ring-gray-600' : 'focus:ring-shopify-focus'} focus:border-shopify-focus`;
+    dispatch(createProduct(productData));
+  };
 
   return (
-    <div className={`border rounded-lg ${
-      theme === 'dark' ? 'bg-black border-gray-800' : 'bg-white border-shopify-border'
-    }`}>
-      <div className="p-6 border-b border-shopify-border dark:border-gray-800">
-        <div className="flex items-center">
-          <button
-            onClick={() => navigate('/catalog/manage-products')}
-            className={`p-2 mr-4 border rounded-md ${
-              theme === 'dark' ? 'border-gray-800 hover:bg-gray-900' : 'border-shopify-border hover:bg-shopify-surface'
-            }`}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h2 className="text-xl font-semibold">New Product</h2>
-        </div>
-      </div>
+    <CardContainer>
+      <PageHeader title="New Product" backLink="/catalog/manage-products" />
 
       <div className="p-6 space-y-6">
+        {error && <Message variant="error">{error}</Message>}
+        {loading && <Loader />}
+
         {/* Product Image Upload */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">Product Image</label>
-          <div className="flex items-center space-x-4">
-            <div className={`w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center ${
-              theme === 'dark' ? 'border-gray-800' : 'border-shopify-border'
-            }`}>
-              {imagePreview ? (
-                <div className="relative w-full h-full">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                  <button
-                    onClick={() => setImagePreview(null)}
-                    className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <label className="cursor-pointer">
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                  />
-                  <Upload className="w-8 h-8 text-shopify-text-secondary" />
-                </label>
-              )}
-            </div>
-            <div className="text-sm text-shopify-text-secondary">
-              <p>Upload a product image</p>
-              <p>Recommended size: 800x800px</p>
-            </div>
-          </div>
-        </div>
+        <ImageUpload
+          imagePreview={imagePreview}
+          onImageUpload={handleImageUpload}
+          onImageRemove={handleImageRemove}
+        />
 
         {/* Basic Information */}
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Product Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className={inputClassName}
-              placeholder="Enter product title"
+          <FormInput
+            label="Product Title"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Enter product title"
+            required
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormInput
+              label="Brand"
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+              placeholder="Enter brand name"
+              required
+            />
+            
+            <FormInput
+              label="Category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="Enter product category"
+              required
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className={`${inputClassName} h-32 resize-none`}
-              placeholder="Enter product description"
-            />
-          </div>
+          <FormInput
+            label="SKU"
+            value={sku}
+            onChange={(e) => setSku(e.target.value)}
+            placeholder="Enter product SKU"
+            required
+          />
+
+          <FormTextarea
+            label="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Enter product description"
+            className="h-32 resize-none"
+            required
+          />
         </div>
 
         {/* Pricing */}
         <div className="space-y-4">
+          <FormInput
+            label="Base Price (cost price)"
+            type="number"
+            value={basePrice}
+            onChange={(e) => setBasePrice(e.target.value)}
+            placeholder="0.00"
+            min="0"
+            step="0.01"
+            required
+          />
+
           <div>
-            <label className="block text-sm font-medium mb-1">Base Price (without tax)</label>
+            <label className="block text-sm font-medium mb-1">Profit Percentage</label>
+            <div className="flex">
+              <input
+                type="number"
+                value={profitPercentage}
+                onChange={(e) => setProfitPercentage(e.target.value)}
+                className="w-full p-3 border rounded-md rounded-r-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="20"
+                min="0"
+                step="0.1"
+                required
+              />
+              <div className="flex items-center justify-center px-4 border border-l-0 rounded-r-md">
+                %
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Price with Profit</label>
             <input
               type="number"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              className={inputClassName}
-              placeholder="0.00"
-              min="0"
-              step="0.01"
+              value={priceWithProfit.toFixed(2)}
+              className="w-full p-3 border rounded-md bg-gray-100 dark:bg-gray-800"
+              disabled
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Base price + {profitPercentage}% profit
+            </p>
           </div>
 
           {/* Taxes */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium">Taxes</label>
+            <label className="block text-sm font-medium">Taxes (applied on price with profit)</label>
             <div className="grid grid-cols-12 gap-2">
               <input
                 type="text"
                 value={newTaxName}
                 onChange={(e) => setNewTaxName(e.target.value)}
-                className={`${inputClassName} col-span-7`}
+                className="col-span-7 p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Tax name"
               />
               <input
                 type="number"
                 value={newTaxPercentage}
                 onChange={(e) => setNewTaxPercentage(e.target.value)}
-                className={`${inputClassName} col-span-4`}
+                className="col-span-4 p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Percentage"
                 min="0"
                 step="0.01"
               />
               <button
+                type="button"
                 onClick={handleAddTax}
-                className={`p-2 border rounded-md col-span-1 ${
-                  theme === 'dark'
-                    ? 'border-gray-800 hover:bg-gray-900'
-                    : 'border-shopify-border hover:bg-shopify-surface'
-                }`}
+                className="col-span-1 p-2 border rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -211,19 +266,18 @@ const NewProduct = () => {
             
             {/* Tax List */}
             <div className="space-y-2">
-              {taxes.map((tax) => (
+              {taxes.map((tax, index) => (
                 <div
-                  key={tax.id}
-                  className={`flex items-center justify-between p-2 border rounded-md ${
-                    theme === 'dark' ? 'border-gray-800' : 'border-shopify-border'
-                  }`}
+                  key={index}
+                  className="flex items-center justify-between p-2 border rounded-md"
                 >
                   <span>{tax.name} ({tax.percentage}%)</span>
                   <button
-                    onClick={() => handleRemoveTax(tax.id)}
+                    type="button"
+                    onClick={() => handleRemoveTax(index)}
                     className="text-red-500"
                   >
-                    <X className="w-4 h-4" />
+                    <Minus className="w-4 h-4" />
                   </button>
                 </div>
               ))}
@@ -232,50 +286,72 @@ const NewProduct = () => {
 
           {/* Final Price */}
           <div>
-            <label className="block text-sm font-medium mb-1">Final Price (with taxes)</label>
+            <label className="block text-sm font-medium mb-1">Final Price (with profit and taxes)</label>
             <input
               type="number"
               value={finalPrice.toFixed(2)}
-              className={`${inputClassName} bg-shopify-surface`}
+              className="w-full p-3 border rounded-md bg-gray-100 dark:bg-gray-800 font-bold"
               disabled
             />
           </div>
         </div>
 
         {/* Stock */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Initial Stock</label>
-          <input
-            type="number"
-            value={stock}
-            onChange={(e) => setStock(e.target.value)}
-            className={inputClassName}
-            placeholder="0"
-            min="0"
+        <FormInput
+          label="Initial Stock"
+          type="number"
+          value={stock}
+          onChange={(e) => setStock(e.target.value)}
+          placeholder="0"
+          min="0"
+          required
+        />
+
+        {/* Status */}
+        <FormSelect
+          label="Status"
+          value={status}
+          onChange={(value) => setStatus(value)}
+          options={[
+            { value: 'Live', label: 'Live' },
+            { value: 'Saved', label: 'Saved' }
+          ]}
+        />
+
+        {/* Additional Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormInput
+            label="Dimensions"
+            value={dimensions}
+            onChange={(e) => setDimensions(e.target.value)}
+            placeholder="e.g., 10 x 5 x 2 inches"
+          />
+          <FormInput
+            label="Weight"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            placeholder="e.g., 2.5 lbs"
           />
         </div>
 
         {/* Action Buttons */}
         <div className="flex justify-end space-x-4 pt-6">
-          <button
-            onClick={() => handleSave('draft')}
-            className={`px-4 py-2 border rounded-md ${
-              theme === 'dark'
-                ? 'border-gray-800 hover:bg-gray-900'
-                : 'border-shopify-border hover:bg-shopify-surface'
-            }`}
+          <ActionButton
+            onClick={() => handleSubmit('Saved')}
+            disabled={loading}
           >
             Save as Draft
-          </button>
-          <button
-            onClick={() => handleSave('published')}
-            className="px-4 py-2 bg-shopify-green text-white rounded-md hover:bg-shopify-green-dark"
+          </ActionButton>
+          <ActionButton
+            variant="primary"
+            onClick={() => handleSubmit('Live')}
+            disabled={loading}
           >
             Publish
-          </button>
+          </ActionButton>
         </div>
       </div>
-    </div>
+    </CardContainer>
   );
 };
 
