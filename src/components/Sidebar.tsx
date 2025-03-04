@@ -1,11 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ChevronDown, Home, ShoppingBag, Package, Users, LogOut, Tag, BarChart, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useSidebar } from '../context/SidebarContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { logout } from '../redux/slices/authSlice';
-import { AppDispatch } from '../redux/store';
 import LogoutDialog from './LogoutDialog';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -91,20 +88,11 @@ const Sidebar = () => {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const { isExpanded, toggleSidebar, openSidebar, closeSidebar, sidebarRef } = useSidebar();
   const { theme } = useTheme();
-  const dispatch = useDispatch<AppDispatch>();
   
   // Automatically open the Reports menu if we're on a reports page
-  useEffect(() => {
+  React.useEffect(() => {
     if (location.pathname.startsWith('/reports')) {
       setOpenMenuId('reports');
-    } else if (location.pathname.startsWith('/catalog')) {
-      setOpenMenuId('catalog');
-    } else if (location.pathname.startsWith('/orders')) {
-      setOpenMenuId('orders');
-    } else if (location.pathname.startsWith('/customers')) {
-      setOpenMenuId('customers');
-    } else if (location.pathname.startsWith('/discounts')) {
-      setOpenMenuId('discounts');
     }
   }, [location.pathname]);
 
@@ -113,7 +101,8 @@ const Sidebar = () => {
   };
 
   const handleLogout = () => {
-    dispatch(logout());
+    // Implement logout logic here
+    console.log('Logging out...');
     setIsLogoutDialogOpen(false);
   };
 

@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { createProduct, clearProductError, resetProductSuccess } from '../../redux/slices/productSlice';
-import { AppDispatch, RootState } from '../../redux/store';
+import React, { useState } from 'react';
+import { useTheme } from '../../context/ThemeContext';
 import { Plus, Minus, Save } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { CardContainer } from '@/components/ui/card-container';
 import { PageHeader } from '@/components/ui/page-header';
 import { FormInput } from '@/components/ui/form-input';
@@ -11,16 +9,24 @@ import { FormTextarea } from '@/components/ui/form-textarea';
 import { FormSelect } from '@/components/ui/form-select';
 import { ActionButton } from '@/components/ui/action-button';
 import { ImageUpload } from '@/components/ui/image-upload';
-import Message from '../../components/Message';
-import Loader from '../../components/Loader';
+
+interface OrderItem {
+  id: string;
+  productName: string;
+  quantity: number;
+  price: number;
+}
 
 interface Tax {
+  id: string;
   name: string;
   percentage: number;
 }
 
 const NewProduct = () => {
-  const [name, setName] = useState('');
+  const { theme } = useTheme();
+  const navigate = useNavigate();
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [basePrice, setBasePrice] = useState('');
   const [profitPercentage, setProfitPercentage] = useState('20');
@@ -28,8 +34,6 @@ const NewProduct = () => {
   const [newTaxName, setNewTaxName] = useState('');
   const [newTaxPercentage, setNewTaxPercentage] = useState('');
   const [stock, setStock] = useState('');
-  const [sku, setSku] = useState('');
-  const [status, setStatus] = useState('Saved');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [priceWithProfit, setPriceWithProfit] = useState(0);
   const [finalPrice, setFinalPrice] = useState(0);
@@ -37,27 +41,8 @@ const NewProduct = () => {
   const [category, setCategory] = useState('');
   const [dimensions, setDimensions] = useState('');
   const [weight, setWeight] = useState('');
-  const [image, setImage] = useState('');
 
-  const navigate = useNavigate();
-  const dispatch = useDispatch<AppDispatch>();
-  
-  const { loading, error, success } = useSelector((state: RootState) => state.products);
-
-  useEffect(() => {
-    // Clear any previous errors and success state
-    dispatch(clearProductError());
-    dispatch(resetProductSuccess());
-  }, [dispatch]);
-
-  useEffect(() => {
-    // Redirect after successful product creation
-    if (success) {
-      navigate('/catalog/manage-products');
-    }
-  }, [success, navigate]);
-
-  useEffect(() => {
+  React.useEffect(() => {
     const basePriceValue = parseFloat(basePrice) || 0;
     const profitValue = basePriceValue * (parseFloat(profitPercentage) / 100);
     const priceWithProfitValue = basePriceValue + profitValue;
@@ -75,6 +60,7 @@ const NewProduct = () => {
       setTaxes([
         ...taxes,
         {
+          id: Date.now().toString(),
           name: newTaxName,
           percentage: parseFloat(newTaxPercentage)
         }
@@ -84,100 +70,62 @@ const NewProduct = () => {
     }
   };
 
-  const handleRemoveTax = (index: number) => {
-    setTaxes(taxes.filter((_, i) => i !== index));
+  const handleRemoveTax = (id: string) => {
+    setTaxes(taxes.filter(tax => tax.id !== id));
   };
 
   const handleImageUpload = (file: File) => {
     const reader = new FileReader();
     reader.onloadend = () => {
-      const result = reader.result as string;
-      setImagePreview(result);
-      setImage(result);
+      setImagePreview(reader.result as string);
     };
     reader.readAsDataURL(file);
   };
 
-  const handleImageRemove = () => {
-    setImagePreview(null);
-    setImage('');
-  };
-
-  const handleSubmit = (submitStatus: 'Live' | 'Saved') => {
-    // Validate form
-    if (!name || !image || !brand || !category || !description || !basePrice || !stock || !sku) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    const productData = {
-      name,
-      image,
-      brand,
-      category,
+  const handleSave = (status: 'draft' | 'published') => {
+    // Handle save logic here
+    console.log({
+      title,
       description,
       basePrice: parseFloat(basePrice),
       profitPercentage: parseFloat(profitPercentage),
+      priceWithProfit,
       taxes,
+      finalPrice,
       stock: parseInt(stock),
-      sku,
-      status: submitStatus,
+      brand,
+      category,
       dimensions,
-      weight
-    };
-
-    dispatch(createProduct(productData));
+      weight,
+      status
+    });
   };
+
+  const inputClassName = `w-full p-3 border rounded-md ${
+    theme === 'dark'
+      ? 'bg-gray-900 border-gray-800'
+      : 'bg-white border-shopify-border'
+  } focus:outline-none focus:ring-2 ${theme === 'dark' ? 'focus:ring-gray-600' : 'focus:ring-shopify-focus'} focus:border-shopify-focus`;
 
   return (
     <CardContainer>
       <PageHeader title="New Product" backLink="/catalog/manage-products" />
 
       <div className="p-6 space-y-6">
-        {error && <Message variant="error">{error}</Message>}
-        {loading && <Loader />}
-
         {/* Product Image Upload */}
         <ImageUpload
           imagePreview={imagePreview}
           onImageUpload={handleImageUpload}
-          onImageRemove={handleImageRemove}
+          onImageRemove={() => setImagePreview(null)}
         />
 
         {/* Basic Information */}
         <div className="space-y-4">
           <FormInput
             label="Product Title"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
             placeholder="Enter product title"
-            required
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormInput
-              label="Brand"
-              value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              placeholder="Enter brand name"
-              required
-            />
-            
-            <FormInput
-              label="Category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="Enter product category"
-              required
-            />
-          </div>
-
-          <FormInput
-            label="SKU"
-            value={sku}
-            onChange={(e) => setSku(e.target.value)}
-            placeholder="Enter product SKU"
-            required
           />
 
           <FormTextarea
@@ -186,7 +134,6 @@ const NewProduct = () => {
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Enter product description"
             className="h-32 resize-none"
-            required
           />
         </div>
 
@@ -200,7 +147,6 @@ const NewProduct = () => {
             placeholder="0.00"
             min="0"
             step="0.01"
-            required
           />
 
           <div>
@@ -210,13 +156,14 @@ const NewProduct = () => {
                 type="number"
                 value={profitPercentage}
                 onChange={(e) => setProfitPercentage(e.target.value)}
-                className="w-full p-3 border rounded-md rounded-r-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className={`${inputClassName} rounded-r-none`}
                 placeholder="20"
                 min="0"
                 step="0.1"
-                required
               />
-              <div className="flex items-center justify-center px-4 border border-l-0 rounded-r-md">
+              <div className={`flex items-center justify-center px-4 border border-l-0 rounded-r-md ${
+                theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-shopify-border'
+              }`}>
                 %
               </div>
             </div>
@@ -227,10 +174,10 @@ const NewProduct = () => {
             <input
               type="number"
               value={priceWithProfit.toFixed(2)}
-              className="w-full p-3 border rounded-md bg-gray-100 dark:bg-gray-800"
+              className={`${inputClassName} bg-shopify-surface`}
               disabled
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-shopify-text-secondary">
               Base price + {profitPercentage}% profit
             </p>
           </div>
@@ -243,22 +190,25 @@ const NewProduct = () => {
                 type="text"
                 value={newTaxName}
                 onChange={(e) => setNewTaxName(e.target.value)}
-                className="col-span-7 p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className={`${inputClassName} col-span-7`}
                 placeholder="Tax name"
               />
               <input
                 type="number"
                 value={newTaxPercentage}
                 onChange={(e) => setNewTaxPercentage(e.target.value)}
-                className="col-span-4 p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className={`${inputClassName} col-span-4`}
                 placeholder="Percentage"
                 min="0"
                 step="0.01"
               />
               <button
-                type="button"
                 onClick={handleAddTax}
-                className="col-span-1 p-2 border rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+                className={`p-2 border rounded-md col-span-1 ${
+                  theme === 'dark'
+                    ? 'border-gray-800 hover:bg-gray-900'
+                    : 'border-shopify-border hover:bg-shopify-surface'
+                }`}
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -266,15 +216,16 @@ const NewProduct = () => {
             
             {/* Tax List */}
             <div className="space-y-2">
-              {taxes.map((tax, index) => (
+              {taxes.map((tax) => (
                 <div
-                  key={index}
-                  className="flex items-center justify-between p-2 border rounded-md"
+                  key={tax.id}
+                  className={`flex items-center justify-between p-2 border rounded-md ${
+                    theme === 'dark' ? 'border-gray-800' : 'border-shopify-border'
+                  }`}
                 >
                   <span>{tax.name} ({tax.percentage}%)</span>
                   <button
-                    type="button"
-                    onClick={() => handleRemoveTax(index)}
+                    onClick={() => handleRemoveTax(tax.id)}
                     className="text-red-500"
                   >
                     <Minus className="w-4 h-4" />
@@ -290,7 +241,7 @@ const NewProduct = () => {
             <input
               type="number"
               value={finalPrice.toFixed(2)}
-              className="w-full p-3 border rounded-md bg-gray-100 dark:bg-gray-800 font-bold"
+              className={`${inputClassName} bg-shopify-surface font-bold`}
               disabled
             />
           </div>
@@ -304,21 +255,24 @@ const NewProduct = () => {
           onChange={(e) => setStock(e.target.value)}
           placeholder="0"
           min="0"
-          required
-        />
-
-        {/* Status */}
-        <FormSelect
-          label="Status"
-          value={status}
-          onChange={(value) => setStatus(value)}
-          options={[
-            { value: 'Live', label: 'Live' },
-            { value: 'Saved', label: 'Saved' }
-          ]}
         />
 
         {/* Additional Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormInput
+            label="Category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="Enter product category"
+          />
+          <FormInput
+            label="Brand"
+            value={brand}
+            onChange={(e) => setBrand(e.target.value)}
+            placeholder="Enter product brand"
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormInput
             label="Dimensions"
@@ -337,15 +291,13 @@ const NewProduct = () => {
         {/* Action Buttons */}
         <div className="flex justify-end space-x-4 pt-6">
           <ActionButton
-            onClick={() => handleSubmit('Saved')}
-            disabled={loading}
+            onClick={() => handleSave('draft')}
           >
             Save as Draft
           </ActionButton>
           <ActionButton
             variant="primary"
-            onClick={() => handleSubmit('Live')}
-            disabled={loading}
+            onClick={() => handleSave('published')}
           >
             Publish
           </ActionButton>

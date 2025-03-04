@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { getProducts, deleteProduct, clearProductError, resetProductSuccess } from '../../redux/slices/productSlice';
-import { AppDispatch, RootState } from '../../redux/store';
+import React, { useState } from 'react';
+import { useTheme } from '../../context/ThemeContext';
 import { ExternalLink, Edit, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { CardContainer } from '@/components/ui/card-container';
 import { PageHeader } from '@/components/ui/page-header';
 import { SearchInput } from '@/components/ui/search-input';
@@ -12,67 +10,110 @@ import { ActionButton } from '@/components/ui/action-button';
 import { IconButton } from '@/components/ui/icon-button';
 import { DataTable } from '@/components/ui/data-table';
 import { StatusBadge } from '@/components/ui/status-badge';
-import Message from '../../components/Message';
-import Loader from '../../components/Loader';
+
+interface Product {
+  id: number;
+  image: string;
+  title: string;
+  price: number;
+  stock: number;
+  status: string;
+  sku: string;
+  description?: string;
+  category?: string;
+  brand?: string;
+  dimensions?: string;
+  weight?: string;
+}
+
+const products: Product[] = [
+  {
+    id: 1,
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&q=80',
+    title: 'Premium Headphones',
+    price: 199.99,
+    stock: 45,
+    status: 'Live',
+    sku: 'HDX-100',
+    description: 'High-quality wireless headphones with noise cancellation',
+    category: 'Electronics',
+    brand: 'AudioTech',
+    dimensions: '7.5 x 6.3 x 3.2 inches',
+    weight: '0.55 lbs'
+  },
+  {
+    id: 2,
+    image: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=200&q=80',
+    title: 'Wireless Mouse',
+    price: 49.99,
+    stock: 32,
+    status: 'Saved',
+    sku: 'WM-200',
+    description: 'Ergonomic wireless mouse with precision tracking',
+    category: 'Electronics',
+    brand: 'TechGear',
+    dimensions: '4.5 x 2.8 x 1.5 inches',
+    weight: '0.25 lbs'
+  },
+  {
+    id: 3,
+    image: 'https://images.unsplash.com/photo-1527814050087-3793815479db?w=200&q=80',
+    title: 'Mechanical Keyboard',
+    price: 159.99,
+    stock: 15,
+    status: 'Live',
+    sku: 'KB-300',
+    description: 'Mechanical gaming keyboard with RGB backlight',
+    category: 'Electronics',
+    brand: 'GameTech',
+    dimensions: '17.3 x 5.1 x 1.4 inches',
+    weight: '2.1 lbs'
+  },
+  {
+    id: 4,
+    image: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=200&q=80',
+    title: 'Gaming Monitor',
+    price: 299.99,
+    stock: 8,
+    status: 'Saved',
+    sku: 'GM-400',
+    description: '27-inch gaming monitor with 144Hz refresh rate',
+    category: 'Electronics',
+    brand: 'ViewTech',
+    dimensions: '24.1 x 21.2 x 7.9 inches',
+    weight: '12.3 lbs'
+  }
+];
 
 const ManageProducts = () => {
+  const { theme } = useTheme();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<string | null>(null);
-
-  const navigate = useNavigate();
-  const dispatch = useDispatch<AppDispatch>();
-  
-  const { products, loading, error, success } = useSelector((state: RootState) => state.products);
-
-  useEffect(() => {
-    dispatch(getProducts());
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (success) {
-      dispatch(resetProductSuccess());
-    }
-  }, [success, dispatch]);
-
-  const handleManageProduct = (productId: string) => {
-    navigate(`/catalog/manage-product/${productId}`);
-  };
-
-  const handleDeleteClick = (productId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setProductToDelete(productId);
-    setShowDeleteConfirm(true);
-  };
-
-  const confirmDelete = () => {
-    if (productToDelete) {
-      dispatch(deleteProduct(productToDelete));
-      setShowDeleteConfirm(false);
-      setProductToDelete(null);
-    }
-  };
 
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.sku.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = !statusFilter || product.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
+  const handleManageProduct = (productId: number) => {
+    navigate(`/catalog/manage-product/${productId}`);
+  };
+
   const columns = [
     {
       header: 'Product',
-      accessor: (product: any) => (
+      accessor: (product: Product) => (
         <div className="flex items-center">
           <img
             className="h-16 w-16 object-cover rounded-md border dark:border-gray-800"
             src={product.image}
-            alt={product.name}
+            alt={product.title}
           />
           <div className="ml-4">
-            <div className="font-medium">{product.name}</div>
+            <div className="font-medium">{product.title}</div>
           </div>
         </div>
       )
@@ -80,30 +121,30 @@ const ManageProducts = () => {
     {
       header: 'SKU',
       accessor: 'sku',
-      className: 'text-gray-500'
+      className: 'text-shopify-text-secondary'
     },
     {
       header: 'Price',
-      accessor: (product: any) => `$${product.finalPrice.toFixed(2)}`,
-      className: 'text-gray-500'
+      accessor: (product: Product) => `$${product.price.toFixed(2)}`,
+      className: 'text-shopify-text-secondary'
     },
     {
       header: 'Stock',
-      accessor: (product: any) => (
-        <span className={`${product.stock < 10 ? 'text-red-500' : 'text-gray-500'}`}>
+      accessor: (product: Product) => (
+        <span className={`${product.stock < 10 ? 'text-red-500' : 'text-shopify-text-secondary'}`}>
           {product.stock} units
         </span>
       )
     },
     {
       header: 'Status',
-      accessor: (product: any) => (
+      accessor: (product: Product) => (
         <StatusBadge status={product.status} />
       )
     },
     {
       header: 'Actions',
-      accessor: (product: any) => (
+      accessor: (product: Product) => (
         <div className="flex space-x-3">
           <IconButton 
             icon={ExternalLink} 
@@ -114,14 +155,13 @@ const ManageProducts = () => {
             tooltip="Manage Product"
             onClick={(e) => {
               e.stopPropagation();
-              handleManageProduct(product._id);
+              handleManageProduct(product.id);
             }}
           />
           <IconButton 
             icon={Trash2} 
             tooltip="Delete Product"
             className="text-red-500"
-            onClick={(e) => handleDeleteClick(product._id, e)}
           />
         </div>
       )
@@ -157,44 +197,15 @@ const ManageProducts = () => {
         </div>
       </PageHeader>
 
-      <div className="p-6">
-        {error && <Message variant="error">{error}</Message>}
-        {loading ? (
-          <Loader />
-        ) : (
-          <DataTable
-            columns={columns}
-            data={filteredProducts}
-            keyField="_id"
-            onRowClick={(product) => handleManageProduct(product._id)}
-            emptyMessage="No products found. Try adjusting your search or filters."
-          />
-        )}
+      <div className="overflow-x-auto">
+        <DataTable
+          columns={columns}
+          data={filteredProducts}
+          keyField="id"
+          onRowClick={(product) => handleManageProduct(product.id)}
+          emptyMessage="No products found. Try adjusting your search or filters."
+        />
       </div>
-
-      {/* Delete Confirmation Dialog */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full">
-            <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
-            <p className="mb-6">Are you sure you want to delete this product? This action cannot be undone.</p>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 border rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </CardContainer>
   );
 };

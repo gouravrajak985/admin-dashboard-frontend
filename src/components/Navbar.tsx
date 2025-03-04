@@ -3,8 +3,6 @@ import { Search, Sun, Moon, MessageCircle, Bell, User, Menu } from 'lucide-react
 import { useTheme } from '../context/ThemeContext';
 import { useSidebar } from '../context/SidebarContext';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { RootState } from '../redux/store';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,7 +18,11 @@ const Navbar = () => {
   const { theme, toggleTheme } = useTheme();
   const { isExpanded, toggleSidebar } = useSidebar();
   const navigate = useNavigate();
-  const { user } = useSelector((state: RootState) => state.auth);
+  const user = {
+    name: 'John Doe',
+    email: 'john@example.com',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
+  };
 
   return (
     <nav className={cn(
@@ -73,12 +75,12 @@ const Navbar = () => {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center space-x-3 p-2 rounded-md">
               <Avatar>
-                <AvatarImage src="https://github.com/shadcn.png" alt={user?.name || 'User'} />
-                <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
+                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
               </Avatar>
               <div className="text-left hidden md:block">
-                <p className="text-sm font-medium">{user?.name || 'User'}</p>
-                <p className="text-xs text-muted-foreground">{user?.email || 'user@example.com'}</p>
+                <p className="text-sm font-medium">{user.name}</p>
+                <p className="text-xs text-muted-foreground">{user.email}</p>
               </div>
             </Button>
           </DropdownMenuTrigger>

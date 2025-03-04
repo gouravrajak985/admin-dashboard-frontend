@@ -1,145 +1,213 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useTheme } from '../../context/ThemeContext';
+import { Plus, Minus, Save, ArrowLeft, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { createOrder, clearOrderError, resetOrderSuccess } from '../../redux/slices/orderSlice';
-import { getCustomers } from '../../redux/slices/customerSlice';
-import { getProducts } from '../../redux/slices/productSlice';
-import { AppDispatch, RootState } from '../../redux/store';
-import { ArrowLeft, Save, Plus, Minus } from 'lucide-react';
-import Message from '../../components/Message';
-import Loader from '../../components/Loader';
+
+interface Product {
+  id: number;
+  title: string;
+  price: number;
+  sku: string;
+  image: string;
+}
 
 interface OrderItem {
-  product: string;
-  name: string;
+  id: string;
+  productName: string;
   quantity: number;
   price: number;
+  productId?: number;
 }
 
-interface ShippingAddress {
-  address: string;
-  city: string;
-  postalCode: string;
-  country: string;
-}
+// Sample products data (in a real app, this would come from an API)
+const products: Product[] = [
+  {
+    id: 1,
+    title: 'Premium Headphones',
+    price: 199.99,
+    sku: 'HDX-100',
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&q=80'
+  },
+  {
+    id: 2,
+    title: 'Wireless Mouse',
+    price: 49.99,
+    sku: 'WM-200',
+    image: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=200&q=80'
+  },
+  {
+    id: 3,
+    title: 'Mechanical Keyboard',
+    price: 159.99,
+    sku: 'KB-300',
+    image: 'https://images.unsplash.com/photo-1527814050087-3793815479db?w=200&q=80'
+  },
+  {
+    id: 4,
+    title: 'Gaming Monitor',
+    price: 299.99,
+    sku: 'GM-400',
+    image: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=200&q=80'
+  }
+];
 
 const NewOrder = () => {
+  const { theme } = useTheme();
   const navigate = useNavigate();
-  const dispatch = useDispatch<AppDispatch>();
-  
-  const { loading: orderLoading, error: orderError, success: orderSuccess } = useSelector((state: RootState) => state.orders);
-  const { customers, loading: customersLoading } = useSelector((state: RootState) => state.customers);
-  const { products, loading: productsLoading } = useSelector((state: RootState) => state.products);
-  
-  const [customer, setCustomer] = useState('');
-  const [orderItems, setOrderItems] = useState<OrderItem[]>([
-    { product: '', name: '', quantity: 1, price: 0 }
+  const [customerName, setCustomerName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [items, setItems] = useState<OrderItem[]>([
+    { id: '1', productName: '', quantity: 1, price: 0 }
   ]);
-  const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
-    address: '',
-    city: '',
-    postalCode: '',
-    country: ''
-  });
-  const [paymentMethod, setPaymentMethod] = useState('Credit Card');
-  const [paymentReceived, setPaymentReceived] = useState(false);
-  const [status, setStatus] = useState('Pending');
-  const [totalPrice, setTotalPrice] = useState(0);
+  
+  // Product search and recommendation states
+  const [searchQuery, setSearchQuery] = useState<{[key: string]: string}>({});
+  const [showRecommendations, setShowRecommendations] = useState<{[key: string]: boolean}>({});
+  const [filteredProducts, setFilteredProducts] = useState<{[key: string]: Product[]}>({});
+  
+  const recommendationsRef = useRef<{[key: string]: HTMLDivElement | null}>({});
 
+  // Handle clicks outside the recommendations dropdown
   useEffect(() => {
-    dispatch(getCustomers());
-    dispatch(getProducts());
-    dispatch(clearOrderError());
-    dispatch(resetOrderSuccess());
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (orderSuccess) {
-      navigate('/orders/manage-orders');
-    }
-  }, [orderSuccess, navigate]);
-
-  useEffect(() => {
-    // Calculate total price whenever order items change
-    const total = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    setTotalPrice(total);
-  }, [orderItems]);
-
-  const handleAddItem = () => {
-    setOrderItems([...orderItems, { product: '', name: '', quantity: 1, price: 0 }]);
-  };
-
-  const handleRemoveItem = (index: number) => {
-    if (orderItems.length > 1) {
-      const newItems = [...orderItems];
-      newItems.splice(index, 1);
-      setOrderItems(newItems);
-    }
-  };
-
-  const handleItemChange = (index: number, field: keyof OrderItem, value: string | number) => {
-    const newItems = [...orderItems];
-    
-    if (field === 'product' && typeof value === 'string') {
-      const selectedProduct = products.find(p => p._id === value);
-      if (selectedProduct) {
-        newItems[index] = {
-          ...newItems[index],
-          product: value,
-          name: selectedProduct.name,
-          price: selectedProduct.finalPrice
-        };
-      }
-    } else {
-      newItems[index] = {
-        ...newItems[index],
-        [field]: value
-      };
-    }
-    
-    setOrderItems(newItems);
-  };
-
-  const handleShippingChange = (field: keyof ShippingAddress, value: string) => {
-    setShippingAddress({
-      ...shippingAddress,
-      [field]: value
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent, saveAsDraft: boolean = false) => {
-    e.preventDefault();
-    
-    // Validate form
-    if (!customer || orderItems.some(item => !item.product) || 
-        !shippingAddress.address || !shippingAddress.city || 
-        !shippingAddress.postalCode || !shippingAddress.country) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    const orderData = {
-      customer,
-      orderItems,
-      shippingAddress,
-      paymentMethod,
-      paymentReceived,
-      totalPrice,
-      status: saveAsDraft ? 'Saved' : status
+    const handleClickOutside = (event: MouseEvent) => {
+      Object.keys(recommendationsRef.current).forEach(itemId => {
+        if (
+          recommendationsRef.current[itemId] && 
+          !recommendationsRef.current[itemId]?.contains(event.target as Node)
+        ) {
+          setShowRecommendations(prev => ({...prev, [itemId]: false}));
+        }
+      });
     };
 
-    dispatch(createOrder(orderData));
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Filter products based on search query
+  useEffect(() => {
+    const newFilteredProducts: {[key: string]: Product[]} = {};
+    
+    Object.keys(searchQuery).forEach(itemId => {
+      if (searchQuery[itemId]) {
+        const query = searchQuery[itemId].toLowerCase();
+        newFilteredProducts[itemId] = products.filter(
+          product => 
+            product.title.toLowerCase().includes(query) || 
+            product.sku.toLowerCase().includes(query)
+        );
+      } else {
+        newFilteredProducts[itemId] = [];
+      }
+    });
+    
+    setFilteredProducts(newFilteredProducts);
+  }, [searchQuery]);
+
+  const addItem = () => {
+    const newItemId = Date.now().toString();
+    setItems([
+      ...items,
+      {
+        id: newItemId,
+        productName: '',
+        quantity: 1,
+        price: 0
+      }
+    ]);
+    
+    // Initialize search state for the new item
+    setSearchQuery(prev => ({...prev, [newItemId]: ''}));
+    setShowRecommendations(prev => ({...prev, [newItemId]: false}));
   };
 
-  const inputClassName = "w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500";
+  const removeItem = (id: string) => {
+    if (items.length > 1) {
+      setItems(items.filter(item => item.id !== id));
+      
+      // Clean up search state
+      setSearchQuery(prev => {
+        const newState = {...prev};
+        delete newState[id];
+        return newState;
+      });
+      
+      setShowRecommendations(prev => {
+        const newState = {...prev};
+        delete newState[id];
+        return newState;
+      });
+      
+      setFilteredProducts(prev => {
+        const newState = {...prev};
+        delete newState[id];
+        return newState;
+      });
+    }
+  };
+
+  const updateItem = (id: string, field: keyof OrderItem, value: string | number) => {
+    setItems(items.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const handleProductSearch = (id: string, value: string) => {
+    updateItem(id, 'productName', value);
+    setSearchQuery(prev => ({...prev, [id]: value}));
+    setShowRecommendations(prev => ({...prev, [id]: true}));
+  };
+
+  const handleSelectProduct = (itemId: string, product: Product) => {
+    updateItem(itemId, 'productName', product.title);
+    updateItem(itemId, 'price', product.price);
+    updateItem(itemId, 'productId', product.id);
+    setShowRecommendations(prev => ({...prev, [itemId]: false}));
+  };
+
+  const calculateTotal = () => {
+    return items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+  };
+
+  const handleSubmit = (e: React.FormEvent, status: 'draft' | 'submitted') => {
+    e.preventDefault();
+    // Add order submission logic here
+    console.log({
+      customerName,
+      email,
+      phone,
+      address,
+      paymentMethod,
+      items,
+      total: calculateTotal(),
+      status
+    });
+    
+    navigate('/orders/manage-orders');
+  };
+
+  const inputClassName = `w-full p-3 border rounded-md ${
+    theme === 'dark'
+      ? 'bg-gray-900 border-gray-800'
+      : 'bg-white border-shopify-border'
+  } focus:outline-none focus:ring-2 ${theme === 'dark' ? 'focus:ring-gray-600' : 'focus:ring-shopify-focus'} focus:border-shopify-focus`;
 
   return (
-    <div className="border rounded-lg">
-      <div className="p-6 border-b">
+    <div className={`border rounded-lg ${
+      theme === 'dark' ? 'bg-black border-gray-800' : 'bg-white border-shopify-border'
+    }`}>
+      <div className="p-6 border-b border-shopify-border dark:border-gray-800">
         <div className="flex items-center">
           <button
             onClick={() => navigate('/orders/manage-orders')}
-            className="p-2 mr-4 border rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+            className={`p-2 mr-4 border rounded-md ${
+              theme === 'dark' ? 'border-gray-800 hover:bg-gray-900' : 'border-shopify-border hover:bg-shopify-surface'
+            }`}
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -147,26 +215,64 @@ const NewOrder = () => {
         </div>
       </div>
 
-      <form onSubmit={(e) => handleSubmit(e)} className="p-6 space-y-6">
-        {orderError && <Message variant="error">{orderError}</Message>}
-        {orderLoading && <Loader />}
+      <form onSubmit={(e) => handleSubmit(e, 'submitted')} className="p-6 space-y-6">
+        {/* Customer Information */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium mb-2">Customer Name</label>
+            <input
+              type="text"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className={inputClassName}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={inputClassName}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Phone</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className={inputClassName}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Payment Method</label>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className={inputClassName}
+              required
+            >
+              <option value="">Select Payment Method</option>
+              <option value="credit_card">Credit Card</option>
+              <option value="paypal">PayPal</option>
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="cash">Cash on Delivery</option>
+            </select>
+          </div>
+        </div>
 
-        {/* Customer Selection */}
         <div>
-          <label className="block text-sm font-medium mb-2">Customer</label>
-          <select
-            value={customer}
-            onChange={(e) => setCustomer(e.target.value)}
-            className={inputClassName}
+          <label className="block text-sm font-medium mb-2">Shipping Address</label>
+          <textarea
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className={`${inputClassName} h-24`}
             required
-          >
-            <option value="">Select Customer</option>
-            {customers.map((cust) => (
-              <option key={cust._id} value={cust._id}>
-                {cust.customerName} ({cust.email})
-              </option>
-            ))}
-          </select>
+          />
         </div>
 
         {/* Order Items */}
@@ -175,39 +281,73 @@ const NewOrder = () => {
             <h3 className="text-lg font-medium">Order Items</h3>
             <button
               type="button"
-              onClick={handleAddItem}
-              className="p-2 border rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+              onClick={addItem}
+              className={`p-2 border rounded-md ${
+                theme === 'dark'
+                  ? 'border-gray-800 hover:bg-gray-900'
+                  : 'border-shopify-border hover:bg-shopify-surface'
+              }`}
             >
               <Plus className="h-5 w-5" />
             </button>
           </div>
 
           <div className="space-y-4">
-            {orderItems.map((item, index) => (
-              <div key={index} className="p-4 border rounded-md">
+            {items.map((item) => (
+              <div key={item.id} className={`p-4 border rounded-md ${
+                theme === 'dark' ? 'border-gray-800' : 'border-shopify-border'
+              }`}>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium mb-2">Product</label>
-                    <select
-                      value={item.product}
-                      onChange={(e) => handleItemChange(index, 'product', e.target.value)}
-                      className={inputClassName}
-                      required
-                    >
-                      <option value="">Select Product</option>
-                      {products.map((prod) => (
-                        <option key={prod._id} value={prod._id}>
-                          {prod.name} - ${prod.finalPrice.toFixed(2)}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="md:col-span-2 relative">
+                    <label className="block text-sm font-medium mb-2">Product Name or SKU</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={item.productName}
+                        onChange={(e) => handleProductSearch(item.id, e.target.value)}
+                        className={inputClassName}
+                        placeholder="Type to search products..."
+                        required
+                      />
+                      <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    </div>
+                    
+                    {/* Product recommendations dropdown */}
+                    {showRecommendations[item.id] && filteredProducts[item.id]?.length > 0 && (
+                      <div 
+                        ref={el => recommendationsRef.current[item.id] = el}
+                        className={`absolute z-10 mt-1 w-full rounded-md shadow-lg ${
+                          theme === 'dark' ? 'bg-gray-900 border border-gray-800' : 'bg-white border border-gray-200'
+                        } max-h-60 overflow-auto`}
+                      >
+                        {filteredProducts[item.id].map(product => (
+                          <div 
+                            key={product.id}
+                            onClick={() => handleSelectProduct(item.id, product)}
+                            className={`flex items-center p-3 cursor-pointer ${
+                              theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
+                            }`}
+                          >
+                            <img 
+                              src={product.image} 
+                              alt={product.title} 
+                              className="w-10 h-10 object-cover rounded mr-3"
+                            />
+                            <div>
+                              <div className="font-medium">{product.title}</div>
+                              <div className="text-sm text-gray-500">SKU: {product.sku} | ${product.price.toFixed(2)}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Quantity</label>
                     <input
                       type="number"
                       value={item.quantity}
-                      onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))}
+                      onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value))}
                       className={inputClassName}
                       min="1"
                       required
@@ -218,19 +358,18 @@ const NewOrder = () => {
                     <input
                       type="number"
                       value={item.price}
-                      onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))}
+                      onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value))}
                       className={inputClassName}
                       min="0"
                       step="0.01"
                       required
-                      readOnly
                     />
                   </div>
                 </div>
-                {orderItems.length > 1 && (
+                {items.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => handleRemoveItem(index)}
+                    onClick={() => removeItem(item.id)}
                     className="mt-2 text-red-500 hover:text-red-600"
                   >
                     <Minus className="h-4 w-4" />
@@ -241,118 +380,26 @@ const NewOrder = () => {
           </div>
         </div>
 
-        {/* Shipping Address */}
-        <div>
-          <h3 className="text-lg font-medium mb-4">Shipping Address</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium mb-2">Address</label>
-              <input
-                type="text"
-                value={shippingAddress.address}
-                onChange={(e) => handleShippingChange('address', e.target.value)}
-                className={inputClassName}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">City</label>
-              <input
-                type="text"
-                value={shippingAddress.city}
-                onChange={(e) => handleShippingChange('city', e.target.value)}
-                className={inputClassName}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Postal Code</label>
-              <input
-                type="text"
-                value={shippingAddress.postalCode}
-                onChange={(e) => handleShippingChange('postalCode', e.target.value)}
-                className={inputClassName}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Country</label>
-              <input
-                type="text"
-                value={shippingAddress.country}
-                onChange={(e) => handleShippingChange('country', e.target.value)}
-                className={inputClassName}
-                required
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Payment Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium mb-2">Payment Method</label>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className={inputClassName}
-              required
-            >
-              <option value="Credit Card">Credit Card</option>
-              <option value="PayPal">PayPal</option>
-              <option value="Bank Transfer">Bank Transfer</option>
-              <option value="Cash">Cash on Delivery</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Payment Status</label>
-            <select
-              value={paymentReceived.toString()}
-              onChange={(e) => setPaymentReceived(e.target.value === 'true')}
-              className={inputClassName}
-              required
-            >
-              <option value="true">Received</option>
-              <option value="false">Pending</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Order Status */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Order Status</label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className={inputClassName}
-            required
-          >
-            <option value="Pending">Pending</option>
-            <option value="Processing">Processing</option>
-            <option value="Shipped">Shipped</option>
-            <option value="Delivered">Delivered</option>
-            <option value="Cancelled">Cancelled</option>
-            <option value="Returned">Returned</option>
-            <option value="Refunded">Refunded</option>
-            <option value="Completed">Completed</option>
-          </select>
-        </div>
-
-        {/* Total Price */}
-        <div className="p-4 border rounded-md">
+        {/* Order Summary */}
+        <div className={`p-4 border rounded-md ${
+          theme === 'dark' ? 'border-gray-800' : 'border-shopify-border'
+        }`}>
           <div className="flex justify-between items-center">
             <span className="font-medium">Total Amount:</span>
-            <span className="text-xl font-bold">${totalPrice.toFixed(2)}</span>
+            <span className="text-xl font-bold">${calculateTotal().toFixed(2)}</span>
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Submit Buttons */}
         <div className="flex justify-end space-x-4">
           <button
             type="button"
-            onClick={(e) => handleSubmit(e, true)}
-            className="px-6 py-3 border rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center"
-            disabled={orderLoading}
+            onClick={(e) => handleSubmit(e, 'draft')}
+            className={`px-6 py-3 border rounded-md ${
+              theme === 'dark'
+                ? 'border-gray-800 hover:bg-gray-900'
+                : 'border-shopify-border hover:bg-shopify-surface'
+            } flex items-center`}
           >
             <Save className="h-5 w-5 mr-2" />
             Save as Draft
@@ -360,7 +407,6 @@ const NewOrder = () => {
           <button
             type="submit"
             className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
-            disabled={orderLoading}
           >
             <Save className="h-5 w-5 mr-2" />
             Create Order

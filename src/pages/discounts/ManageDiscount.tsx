@@ -1,172 +1,158 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { getDiscountById, updateDiscount, clearDiscountError, resetDiscountSuccess } from '../../redux/slices/discountSlice';
-import { AppDispatch, RootState } from '../../redux/store';
+import { useTheme } from '../../context/ThemeContext';
 import { ArrowLeft, Save } from 'lucide-react';
-import Message from '../../components/Message';
-import Loader from '../../components/Loader';
+import { useNavigate, useParams } from 'react-router-dom';
+
+interface Discount {
+  id: string;
+  code: string;
+  type: 'discount_code' | 'coupon_codes';
+  value: number;
+  valueType: 'percentage' | 'fixed';
+  usageCount: number;
+  maxUses: number | null;
+  status: 'Active' | 'Expired' | 'Scheduled';
+  startDate: string;
+  endDate: string;
+  description?: string;
+  minPurchaseAmount?: number;
+}
+
+const discounts: Discount[] = [
+  {
+    id: 'DISC-001',
+    code: 'SUMMER2024',
+    type: 'discount_code',
+    value: 20,
+    valueType: 'percentage',
+    usageCount: 150,
+    maxUses: null,
+    status: 'Active',
+    startDate: '2024-03-01',
+    endDate: '2024-08-31',
+    description: 'Summer sale discount for all products',
+    minPurchaseAmount: 50
+  },
+  {
+    id: 'DISC-002',
+    code: 'WELCOME10',
+    type: 'discount_code',
+    value: 10,
+    valueType: 'fixed',
+    usageCount: 45,
+    maxUses: null,
+    status: 'Active',
+    startDate: '2024-01-01',
+    endDate: '2024-12-31',
+    description: 'Welcome discount for new customers',
+    minPurchaseAmount: 0
+  },
+  {
+    id: 'DISC-003',
+    code: 'FLASH50',
+    type: 'coupon_codes',
+    value: 50,
+    valueType: 'percentage',
+    usageCount: 98,
+    maxUses: 100,
+    status: 'Expired',
+    startDate: '2024-02-01',
+    endDate: '2024-02-28',
+    description: 'Flash sale with limited uses',
+    minPurchaseAmount: 100
+  }
+];
 
 const ManageDiscount = () => {
-  const { id } = useParams<{ id: string }>();
+  const { theme } = useTheme();
   const navigate = useNavigate();
-  const dispatch = useDispatch<AppDispatch>();
-  
-  const { discount, loading, error, success } = useSelector((state: RootState) => state.discounts);
-  
-  const [code, setCode] = useState('');
-  const [type, setType] = useState('discount_code');
-  const [value, setValue] = useState('');
-  const [valueType, setValueType] = useState('percentage');
-  const [minPurchaseAmount, setMinPurchaseAmount] = useState('0');
-  const [maxUses, setMaxUses] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [status, setStatus] = useState('Active');
-  const [description, setDescription] = useState('');
+  const { id } = useParams<{ id: string }>();
+  const [discount, setDiscount] = useState<Discount | null>(null);
 
   useEffect(() => {
-    if (id) {
-      dispatch(getDiscountById(id));
-    }
-    
-    return () => {
-      dispatch(clearDiscountError());
-    };
-  }, [dispatch, id]);
-
-  useEffect(() => {
-    if (success) {
-      dispatch(resetDiscountSuccess());
+    // Find the discount with the matching ID
+    const foundDiscount = discounts.find(d => d.id === id);
+    if (foundDiscount) {
+      setDiscount(foundDiscount);
+    } else {
+      // Handle case where discount is not found
       navigate('/discounts/manage');
     }
-  }, [success, dispatch, navigate]);
+  }, [id, navigate]);
 
-  useEffect(() => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
     if (discount) {
-      setCode(discount.code);
-      setType(discount.type);
-      setValue(discount.value.toString());
-      setValueType(discount.valueType);
-      setMinPurchaseAmount(discount.minPurchaseAmount?.toString() || '0');
-      setMaxUses(discount.maxUses?.toString() || '');
-      
-      // Format dates for datetime-local input
-      if (discount.startDate) {
-        const startDateObj = new Date(discount.startDate);
-        setStartDate(startDateObj.toISOString().slice(0, 16));
-      }
-      
-      if (discount.endDate) {
-        const endDateObj = new Date(discount.endDate);
-        setEndDate(endDateObj.toISOString().slice(0, 16));
-      }
-      
-      setStatus(discount.status);
-      setDescription(discount.description || '');
+      setDiscount({
+        ...discount,
+        [name]: name === 'value' || name === 'minPurchaseAmount' || name === 'maxUses' 
+          ? parseFloat(value) 
+          : value
+      });
     }
-  }, [discount]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!id) return;
-    
-    // Validate form
-    if (!code || !value || !startDate || !endDate) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    const discountData = {
-      code,
-      type,
-      value: parseFloat(value),
-      valueType,
-      minPurchaseAmount: parseFloat(minPurchaseAmount),
-      maxUses: maxUses ? parseInt(maxUses) : undefined,
-      startDate,
-      endDate,
-      status,
-      description
-    };
-
-    dispatch(updateDiscount({ id, discountData }));
   };
 
-  const inputClassName = "w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500";
+  const handleSave = () => {
+    // Here you would typically make an API call to update the discount
+    console.log('Saving discount:', discount);
+    navigate('/discounts/manage');
+  };
 
-  if (loading && !discount) {
-    return <Loader />;
+  if (!discount) {
+    return <div>Loading...</div>;
   }
 
-  if (error) {
-    return <Message variant="error">{error}</Message>;
-  }
-
-  if (!discount && !loading) {
-    return <Message variant="error">Discount not found</Message>;
-  }
+  const inputClassName = `w-full p-3 border rounded-md ${
+    theme === 'dark'
+      ? 'bg-gray-900 border-gray-800'
+      : 'bg-white border-shopify-border'
+  } focus:outline-none focus:ring-2 ${theme === 'dark' ? 'focus:ring-gray-600' : 'focus:ring-shopify-focus'} focus:border-shopify-focus`;
 
   return (
-    <div className="border rounded-lg">
-      <div className="p-6 border-b">
-        <div className="flex items-center">
-          <button
-            onClick={() => navigate('/discounts/manage')}
-            className="p-2 mr-4 border rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h2 className="text-xl font-semibold">Manage Discount</h2>
+    <div className={`border rounded-lg ${
+      theme === 'dark' ? 'bg-black border-gray-800' : 'bg-white border-shopify-border'
+    }`}>
+      <div className="p-6 border-b border-shopify-border dark:border-gray-800">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <button
+              onClick={() => navigate('/discounts/manage')}
+              className={`p-2 mr-4 border rounded-md ${
+                theme === 'dark' ? 'border-gray-800 hover:bg-gray-900' : 'border-shopify-border hover:bg-shopify-surface'
+              }`}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h2 className="text-xl font-semibold">Manage Discount</h2>
+          </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        {error && <Message variant="error">{error}</Message>}
-        {loading && <Loader />}
-
-        {/* Discount Type Selection */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Discount Type</label>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              type="button"
-              onClick={() => setType('discount_code')}
-              className={`p-4 border rounded-lg text-left ${
-                type === 'discount_code'
-                  ? 'border-green-600 bg-green-50 dark:bg-green-900/20'
-                  : 'border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800'
-              }`}
-            >
-              <h3 className="font-medium mb-1">Discount Code</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Single code that can be used multiple times</p>
-            </button>
-            <button
-              type="button"
-              onClick={() => setType('coupon_codes')}
-              className={`p-4 border rounded-lg text-left ${
-                type === 'coupon_codes'
-                  ? 'border-green-600 bg-green-50 dark:bg-green-900/20'
-                  : 'border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800'
-              }`}
-            >
-              <h3 className="font-medium mb-1">Coupon Codes</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Generate multiple single-use codes</p>
-            </button>
+      <div className="p-6 space-y-6">
+        {/* Discount Information */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium mb-2">Discount Code</label>
+            <input
+              type="text"
+              name="code"
+              value={discount.code}
+              onChange={handleInputChange}
+              className={inputClassName}
+            />
           </div>
-        </div>
-
-        {/* Code */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Discount Code</label>
-          <input
-            type="text"
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            className={inputClassName}
-            required
-          />
+          <div>
+            <label className="block text-sm font-medium mb-2">Discount Type</label>
+            <select
+              name="type"
+              value={discount.type}
+              onChange={handleInputChange}
+              className={inputClassName}
+            >
+              <option value="discount_code">Discount Code</option>
+              <option value="coupon_codes">Coupon Codes</option>
+            </select>
+          </div>
         </div>
 
         {/* Discount Value */}
@@ -176,16 +162,17 @@ const ManageDiscount = () => {
             <div className="flex">
               <input
                 type="number"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
+                name="value"
+                value={discount.value}
+                onChange={handleInputChange}
                 min="0"
-                step={valueType === 'percentage' ? '1' : '0.01'}
+                step={discount.valueType === 'percentage' ? '1' : '0.01'}
                 className={`${inputClassName} rounded-r-none`}
-                required
               />
               <select
-                value={valueType}
-                onChange={(e) => setValueType(e.target.value)}
+                name="valueType"
+                value={discount.valueType}
+                onChange={handleInputChange}
                 className={`${inputClassName} rounded-l-none border-l-0 w-24`}
               >
                 <option value="percentage">%</option>
@@ -197,8 +184,9 @@ const ManageDiscount = () => {
             <label className="block text-sm font-medium mb-2">Minimum Purchase Amount</label>
             <input
               type="number"
-              value={minPurchaseAmount}
-              onChange={(e) => setMinPurchaseAmount(e.target.value)}
+              name="minPurchaseAmount"
+              value={discount.minPurchaseAmount || 0}
+              onChange={handleInputChange}
               min="0"
               step="0.01"
               className={inputClassName}
@@ -207,16 +195,29 @@ const ManageDiscount = () => {
         </div>
 
         {/* Usage Limits */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Maximum Uses (leave empty for unlimited)</label>
-          <input
-            type="number"
-            value={maxUses}
-            onChange={(e) => setMaxUses(e.target.value)}
-            min="0"
-            className={inputClassName}
-            placeholder="Unlimited"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium mb-2">Maximum Uses</label>
+            <input
+              type="number"
+              name="maxUses"
+              value={discount.maxUses || ''}
+              onChange={handleInputChange}
+              min="0"
+              placeholder="Unlimited"
+              className={inputClassName}
+            />
+            <p className="mt-1 text-sm text-muted-foreground">Leave empty for unlimited uses</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Current Usage</label>
+            <input
+              type="number"
+              value={discount.usageCount}
+              className={`${inputClassName} bg-gray-100 dark:bg-gray-800`}
+              disabled
+            />
+          </div>
         </div>
 
         {/* Date Range */}
@@ -224,21 +225,21 @@ const ManageDiscount = () => {
           <div>
             <label className="block text-sm font-medium mb-2">Start Date</label>
             <input
-              type="datetime-local"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              type="date"
+              name="startDate"
+              value={discount.startDate}
+              onChange={handleInputChange}
               className={inputClassName}
-              required
             />
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">End Date</label>
             <input
-              type="datetime-local"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              type="date"
+              name="endDate"
+              value={discount.endDate}
+              onChange={handleInputChange}
               className={inputClassName}
-              required
             />
           </div>
         </div>
@@ -247,14 +248,14 @@ const ManageDiscount = () => {
         <div>
           <label className="block text-sm font-medium mb-2">Status</label>
           <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            name="status"
+            value={discount.status}
+            onChange={handleInputChange}
             className={inputClassName}
-            required
           >
             <option value="Active">Active</option>
-            <option value="Scheduled">Scheduled</option>
             <option value="Expired">Expired</option>
+            <option value="Scheduled">Scheduled</option>
           </select>
         </div>
 
@@ -262,32 +263,35 @@ const ManageDiscount = () => {
         <div>
           <label className="block text-sm font-medium mb-2">Description</label>
           <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            name="description"
+            value={discount.description || ''}
+            onChange={handleInputChange}
             className={`${inputClassName} h-24`}
             placeholder="Add a description for this discount"
           />
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end space-x-4">
+        <div className="flex justify-end space-x-4 pt-6">
           <button
-            type="button"
             onClick={() => navigate('/discounts/manage')}
-            className="px-6 py-3 border rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+            className={`px-4 py-2 border rounded-md ${
+              theme === 'dark'
+                ? 'border-gray-800 hover:bg-gray-900'
+                : 'border-shopify-border hover:bg-shopify-surface'
+            }`}
           >
             Cancel
           </button>
           <button
-            type="submit"
-            className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
-            disabled={loading}
+            onClick={handleSave}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
           >
             <Save className="h-5 w-5 mr-2" />
             Save Changes
           </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 };

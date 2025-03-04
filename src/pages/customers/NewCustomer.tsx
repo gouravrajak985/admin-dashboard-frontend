@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { createCustomer, clearCustomerError, resetCustomerSuccess } from '../../redux/slices/customerSlice';
-import { AppDispatch, RootState } from '../../redux/store';
+import React, { useState } from 'react';
+import { useTheme } from '../../context/ThemeContext';
 import { Save, ArrowLeft } from 'lucide-react';
-import Message from '../../components/Message';
-import Loader from '../../components/Loader';
+import { useNavigate } from 'react-router-dom';
 
 const NewCustomer = () => {
+  const { theme } = useTheme();
+  const navigate = useNavigate();
   const [customerName, setCustomerName] = useState('');
   const [userName, setUserName] = useState('');
   const [email, setEmail] = useState('');
@@ -15,54 +13,38 @@ const NewCustomer = () => {
   const [address, setAddress] = useState('');
   const [status, setStatus] = useState('Active');
 
-  const navigate = useNavigate();
-  const dispatch = useDispatch<AppDispatch>();
-  
-  const { loading, error, success } = useSelector((state: RootState) => state.customers);
-
-  useEffect(() => {
-    // Clear any previous errors and success state
-    dispatch(clearCustomerError());
-    dispatch(resetCustomerSuccess());
-  }, [dispatch]);
-
-  useEffect(() => {
-    // Redirect after successful customer creation
-    if (success) {
-      navigate('/customers/manage-customers');
-    }
-  }, [success, navigate]);
-
   const handleSubmit = (e: React.FormEvent, isDraft: boolean = false) => {
     e.preventDefault();
-    
-    // Validate form
-    if (!customerName || !userName || !email) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    const customerData = {
+    // Add customer creation logic here
+    console.log({
       customerName,
       userName,
       email,
       phone,
       address,
-      status: isDraft ? 'Inactive' : status
-    };
-
-    dispatch(createCustomer(customerData));
+      status,
+      isDraft
+    });
+    navigate('/customers/manage-customers');
   };
 
-  const inputClassName = "w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500";
+  const inputClassName = `w-full p-3 border rounded-md ${
+    theme === 'dark'
+      ? 'bg-gray-900 border-gray-800'
+      : 'bg-white border-shopify-border'
+  } focus:outline-none focus:ring-2 ${theme === 'dark' ? 'focus:ring-gray-600' : 'focus:ring-shopify-focus'} focus:border-shopify-focus`;
 
   return (
-    <div className="border rounded-lg">
-      <div className="p-6 border-b">
+    <div className={`border rounded-lg ${
+      theme === 'dark' ? 'bg-black border-gray-800' : 'bg-white border-shopify-border'
+    }`}>
+      <div className="p-6 border-b border-shopify-border dark:border-gray-800">
         <div className="flex items-center">
           <button
             onClick={() => navigate('/customers/manage-customers')}
-            className="p-2 mr-4 border rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+            className={`p-2 mr-4 border rounded-md ${
+              theme === 'dark' ? 'border-gray-800 hover:bg-gray-900' : 'border-shopify-border hover:bg-shopify-surface'
+            }`}
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -71,9 +53,6 @@ const NewCustomer = () => {
       </div>
 
       <form onSubmit={(e) => handleSubmit(e)} className="p-6 space-y-6">
-        {error && <Message variant="error">{error}</Message>}
-        {loading && <Loader />}
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium mb-2">Customer Name</label>
@@ -112,6 +91,7 @@ const NewCustomer = () => {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className={inputClassName}
+              required
             />
           </div>
         </div>
@@ -122,6 +102,7 @@ const NewCustomer = () => {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             className={`${inputClassName} h-24`}
+            required
           />
         </div>
 
@@ -142,8 +123,11 @@ const NewCustomer = () => {
           <button
             type="button"
             onClick={(e) => handleSubmit(e, true)}
-            className="px-6 py-3 border rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center"
-            disabled={loading}
+            className={`px-6 py-3 border rounded-md ${
+              theme === 'dark'
+                ? 'border-gray-800 hover:bg-gray-900'
+                : 'border-shopify-border hover:bg-shopify-surface'
+            } flex items-center`}
           >
             <Save className="h-5 w-5 mr-2" />
             Save as Draft
@@ -151,7 +135,6 @@ const NewCustomer = () => {
           <button
             type="submit"
             className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
-            disabled={loading}
           >
             <Save className="h-5 w-5 mr-2" />
             Create Customer
